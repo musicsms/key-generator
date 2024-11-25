@@ -1,0 +1,224 @@
+/* Global Styles */
+body {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    min-height: 100vh;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+.container {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+}
+
+/* Card Styles */
+.card {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    border: none;
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.card-header {
+    background: transparent;
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+/* Tab Styles */
+.nav-tabs {
+    border-bottom: none;
+    gap: 0.5rem;
+}
+
+.nav-tabs .nav-link {
+    border: none;
+    color: #6c757d;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.nav-tabs .nav-link:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #495057;
+}
+
+.nav-tabs .nav-link.active {
+    color: #fff;
+    background: #0d6efd;
+    border: none;
+}
+
+/* Form Styles */
+.form-control {
+    border-radius: 0.5rem;
+    border: 1px solid #dee2e6;
+    padding: 0.75rem;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.form-label {
+    font-weight: 500;
+    color: #495057;
+    margin-bottom: 0.5rem;
+}
+
+.form-select {
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+}
+
+/* Button Styles */
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: #0d6efd;
+    border: none;
+    box-shadow: 0 2px 4px rgba(13, 110, 253, 0.3);
+}
+
+.btn-primary:hover {
+    background: #0b5ed7;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(13, 110, 253, 0.4);
+}
+
+.btn-secondary {
+    background: #6c757d;
+    border: none;
+    box-shadow: 0 2px 4px rgba(108, 117, 125, 0.3);
+}
+
+.btn-secondary:hover {
+    background: #5c636a;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(108, 117, 125, 0.4);
+}
+
+/* Result Section Styles */
+#result {
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    padding-top: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+textarea {
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    resize: vertical;
+    min-height: 100px;
+}
+
+textarea#generatedPassphrase {
+    min-height: auto;
+    resize: none;
+}
+
+.input-group {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.input-group textarea {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.input-group .btn {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+/* Title Styles */
+h1 {
+    color: #2d3436;
+    font-weight: 600;
+    margin-bottom: 2rem;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+h5 {
+    color: #2d3436;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+/* Checkbox Styles */
+.form-check {
+    margin-bottom: 0.5rem;
+}
+
+.form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+/* Result Container Styles */
+.result-container {
+    background-color: rgba(255, 255, 255, 0.95);
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.05);
+    margin-bottom: 1rem;
+}
+
+/* Monospace Font */
+.font-monospace {
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+}
+
+/* Alert Styles */
+.alert {
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.alert-info {
+    background-color: rgba(13, 202, 240, 0.1);
+    border-color: rgba(13, 202, 240, 0.2);
+    color: #055160;
+}
+
+/* Icon Styles */
+.bi {
+    line-height: 1;
+    vertical-align: middle;
+}
+
+.btn .bi {
+    margin-right: 0.25rem;
+}
+
+.btn:only-child .bi {
+    margin-right: 0;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .container {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+    }
+    
+    .nav-tabs .nav-link {
+        padding: 0.5rem 1rem;
+    }
+    
+    .btn {
+        padding: 0.5rem 1rem;
+    }
+}
