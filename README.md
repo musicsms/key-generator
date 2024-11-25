@@ -1,20 +1,29 @@
-# Key Generator Web Application
+# WindSurf Key Generator
 
-A secure web application for generating various types of cryptographic keys with a user-friendly interface.
+A secure web-based tool for generating various types of cryptographic key pairs with custom comments and organized storage.
 
 ## Features
 
-- Generate SSH keys with customizable options
-- Generate RSA key pairs with optional passphrase protection
-- Modern and responsive UI using Bootstrap 5
-- Secure key generation using industry-standard cryptographic libraries
-- Copy-to-clipboard functionality for easy key access
+- Generate multiple types of cryptographic keys:
+  - SSH Keys (RSA, ECDSA, ED25519)
+  - RSA Keys
+  - PGP Keys (coming soon)
+- Custom comments for key organization
+- Secure key storage with organized directory structure
+- Optional passphrase protection
+- Modern web interface with Bootstrap
+
+## Prerequisites
+
+- Python 3.8 or higher
+- pip (Python package manager)
+- virtualenv (recommended)
 
 ## Installation
 
 1. Clone the repository:
 ```bash
-git clone [your-repo-url]
+git clone https://github.com/yourusername/key-generator.git
 cd key-generator
 ```
 
@@ -29,38 +38,138 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-## Usage
+## Development Setup
 
-1. Start the Flask server:
+1. Run the Flask development server:
 ```bash
 python app.py
 ```
 
-2. Open your browser and navigate to:
+2. Access the application at `http://localhost:5000`
+
+## Production Deployment
+
+### Using Gunicorn (Recommended)
+
+1. Install Gunicorn:
+```bash
+pip install gunicorn
 ```
-http://localhost:5000
+
+2. Create a systemd service file (on Linux):
+```bash
+sudo nano /etc/systemd/system/key-generator.service
 ```
 
-3. Use the web interface to:
-   - Generate SSH keys
-   - Generate RSA key pairs
-   - Copy generated keys to clipboard
-   - Save keys to files
+Add the following content:
+```ini
+[Unit]
+Description=Key Generator Web Application
+After=network.target
 
-## Security Considerations
+[Service]
+User=yourusername
+WorkingDirectory=/path/to/key-generator
+Environment="PATH=/path/to/key-generator/venv/bin"
+ExecStart=/path/to/key-generator/venv/bin/gunicorn -w 4 -b 127.0.0.1:8000 app:app
 
-- All key generation is performed server-side using secure cryptographic libraries
-- Passphrases are never stored and are only used for key encryption
-- Generated keys are not stored on the server
-- HTTPS is recommended for production deployment
+[Install]
+WantedBy=multi-user.target
+```
 
-## Development
+3. Start and enable the service:
+```bash
+sudo systemctl start key-generator
+sudo systemctl enable key-generator
+```
 
-- Python 3.10+ required
-- Flask for backend API
-- Bootstrap 5.3.2 for frontend UI
-- Cryptography library for secure key generation
+### Nginx Configuration
+
+1. Install Nginx:
+```bash
+sudo apt install nginx  # For Ubuntu/Debian
+```
+
+2. Create Nginx configuration:
+```bash
+sudo nano /etc/nginx/sites-available/key-generator
+```
+
+Add the following content:
+```nginx
+server {
+    listen 80;
+    server_name your_domain.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /static {
+        alias /path/to/key-generator/static;
+    }
+}
+```
+
+3. Enable the site:
+```bash
+sudo ln -s /etc/nginx/sites-available/key-generator /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+### Security Considerations
+
+1. Set up SSL/TLS:
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d your_domain.com
+```
+
+2. Set proper permissions:
+```bash
+chmod 700 /path/to/key-generator/keys
+```
+
+3. Configure firewall:
+```bash
+sudo ufw allow 'Nginx Full'
+sudo ufw enable
+```
+
+## Usage
+
+1. Access the web interface through your domain
+2. Select the type of key you want to generate
+3. Enter a comment (optional) to organize your keys
+4. Add a passphrase (optional) for additional security
+5. Generate the key pair
+6. Keys will be stored in the `keys/[comment]` directory
+
+## Directory Structure
+```
+key-generator/
+├── app.py                  # Main Flask application
+├── generators/             # Key generation modules
+├── static/                # Static files (JS, CSS)
+├── utils/                 # Utility functions
+└── templates/             # HTML templates
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
 ## License
 
-[Your chosen license]
+[MIT License](LICENSE)
+
+## Support
+
+For support, please open an issue in the GitHub repository.

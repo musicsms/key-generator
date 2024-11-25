@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Key Generator</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <link rel="stylesheet" href="/static/vendor/bootstrap/bootstrap.min.css">
     <link rel="stylesheet" href="/static/vendor/bootstrap-icons/bootstrap-icons.min.css">
     <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
@@ -61,6 +62,11 @@
                     <div class="tab-pane fade" id="ssh" role="tabpanel">
                         <form id="sshForm">
                             <div class="mb-3">
+                                <label class="form-label">Comment</label>
+                                <input type="text" class="form-control" name="comment" placeholder="e.g., github_ssh_key" maxlength="40" pattern="[^\\s]+" title="Comment cannot contain spaces, use underscores instead">
+                                <div class="form-text">Maximum 40 characters, no spaces allowed (use underscores)</div>
+                            </div>
+                            <div class="mb-3">
                                 <label class="form-label">Key Type</label>
                                 <select class="form-select" name="keyType" id="sshKeyType">
                                     <option value="rsa">RSA</option>
@@ -91,6 +97,11 @@
                     <!-- PGP Tab -->
                     <div class="tab-pane fade" id="pgp" role="tabpanel">
                         <form id="pgpForm">
+                            <div class="mb-3">
+                                <label class="form-label">Comment</label>
+                                <input type="text" class="form-control" name="comment" placeholder="e.g., personal_pgp_key" maxlength="40" pattern="[^\\s]+" title="Comment cannot contain spaces, use underscores instead">
+                                <div class="form-text">Maximum 40 characters, no spaces allowed (use underscores)</div>
+                            </div>
                             <div class="alert alert-info">
                                 PGP key generation is coming soon!
                             </div>
@@ -101,6 +112,11 @@
                     <!-- RSA Tab -->
                     <div class="tab-pane fade" id="rsa" role="tabpanel">
                         <form id="rsaForm">
+                            <div class="mb-3">
+                                <label class="form-label">Comment</label>
+                                <input type="text" class="form-control" name="comment" placeholder="e.g., work_rsa_key" maxlength="40" pattern="[^\\s]+" title="Comment cannot contain spaces, use underscores instead">
+                                <div class="form-text">Maximum 40 characters, no spaces allowed (use underscores)</div>
+                            </div>
                             <div class="mb-3">
                                 <label class="form-label">Key Size</label>
                                 <select class="form-select" name="keySize">
