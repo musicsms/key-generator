@@ -1,9 +1,11 @@
 // Main application module
-import { clearOutputs, attachTogglePassword } from './utils.js';
+import { clearOutputs, attachTogglePassword, togglePasswordHandler } from './utils.js';
 import { 
     handlePassphraseGeneration, 
-    handleSSHKeyGeneration, 
-    handleRSAKeyGeneration, 
+    handleSSHKeyGeneration,
+    handleRSAKeyGeneration,
+    handlePGPKeyGeneration,
+    PGP_KEY_OPTIONS,
     displayPassphrase 
 } from './generators.js';
 
@@ -14,15 +16,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
+    // Initialize password toggles
+    attachTogglePassword();
+
     // Get form elements
     const passphraseForm = document.getElementById('passphraseForm');
     const sshForm = document.getElementById('sshForm');
     const rsaForm = document.getElementById('rsaForm');
+    const pgpForm = document.getElementById('pgpForm');
     
     console.log('Forms found:', {
         passphraseForm: !!passphraseForm,
         sshForm: !!sshForm,
-        rsaForm: !!rsaForm
+        rsaForm: !!rsaForm,
+        pgpForm: !!pgpForm
     });
 
     // Attach event listeners
@@ -45,6 +52,28 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('RSA form submitted');
             handleRSAKeyGeneration(e);
         });
+    }
+
+    if (pgpForm) {
+        pgpForm.addEventListener('submit', (e) => {
+            console.log('PGP form submitted');
+            handlePGPKeyGeneration(e);
+        });
+        
+        // Initialize PGP key type options
+        const keyTypeSelect = document.getElementById('pgpKeyType');
+        if (keyTypeSelect) {
+            keyTypeSelect.addEventListener('change', updatePGPKeyOptions);
+            // Initial update of options
+            updatePGPKeyOptions();
+        }
+
+        // Ensure toggle password is attached to PGP form
+        const pgpPassphraseToggle = pgpForm.querySelector('.toggle-password');
+        if (pgpPassphraseToggle) {
+            pgpPassphraseToggle.removeEventListener('click', togglePasswordHandler);
+            pgpPassphraseToggle.addEventListener('click', togglePasswordHandler);
+        }
     }
 
     // Enhanced tab change listener
@@ -103,6 +132,46 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Function to update PGP key options based on key type
+    function updatePGPKeyOptions() {
+        const keyType = document.getElementById('pgpKeyType').value;
+        const rsaOptions = document.getElementById('pgpRsaOptions');
+        const eccOptions = document.getElementById('pgpEccOptions');
+        
+        if (!rsaOptions || !eccOptions) return;
+
+        // Show/hide appropriate options
+        if (keyType === 'RSA') {
+            rsaOptions.style.display = 'block';
+            eccOptions.style.display = 'none';
+            
+            // Update RSA key length options if not already populated
+            const keyLengthSelect = document.getElementById('pgpKeyLength');
+            if (keyLengthSelect && !keyLengthSelect.options.length) {
+                PGP_KEY_OPTIONS.RSA.lengths.forEach(({ value, label }) => {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = label;
+                    keyLengthSelect.appendChild(option);
+                });
+            }
+        } else {
+            rsaOptions.style.display = 'none';
+            eccOptions.style.display = 'block';
+            
+            // Update ECC curve options if not already populated
+            const curveSelect = document.getElementById('pgpCurve');
+            if (curveSelect && !curveSelect.options.length) {
+                PGP_KEY_OPTIONS.ECC.curves.forEach(({ value, label }) => {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = label;
+                    curveSelect.appendChild(option);
+                });
+            }
+        }
+    }
+
     // Add event listener to key type select
     const keyTypeSelect = document.getElementById('sshKeyType');
     if (keyTypeSelect) {
@@ -111,9 +180,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Initial update
         updateSSHKeySizes();
     }
-
-    // Initial password toggle attachment
-    attachTogglePassword();
 
     // Re-attach toggle password after any dynamic content changes
     const observer = new MutationObserver((mutations) => {

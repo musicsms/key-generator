@@ -85,7 +85,7 @@
                                 <label class="form-label">Passphrase (Optional)</label>
                                 <div class="input-group">
                                     <input type="password" class="form-control" name="passphrase">
-                                    <button class="btn btn-outline-secondary toggle-password" type="button" onclick="togglePasswordHandler(event)">
+                                    <button class="btn btn-outline-secondary toggle-password" type="button">
                                         <i class="bi bi-eye"></i>
                                     </button>
                                 </div>
@@ -98,14 +98,65 @@
                     <div class="tab-pane fade" id="pgp" role="tabpanel">
                         <form id="pgpForm">
                             <div class="mb-3">
-                                <label class="form-label">Comment</label>
-                                <input type="text" class="form-control" name="comment" placeholder="e.g., personal_pgp_key" maxlength="40" pattern="[^\\s]+" title="Comment cannot contain spaces, use underscores instead">
-                                <div class="form-text">Maximum 40 characters, no spaces allowed (use underscores)</div>
+                                <label class="form-label">Name</label>
+                                <input type="text" class="form-control" name="name" placeholder="e.g., John Doe" required>
                             </div>
-                            <div class="alert alert-info">
-                                PGP key generation is coming soon!
+                            <div class="mb-3">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control" name="email" placeholder="e.g., john@example.com" required>
                             </div>
-                            <button type="submit" class="btn btn-primary" disabled>Generate PGP Key</button>
+                            <div class="mb-3">
+                                <label class="form-label">Comment (Optional)</label>
+                                <input type="text" class="form-control" name="comment" placeholder="e.g., work key">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Key Type</label>
+                                <select class="form-select" name="keyType" id="pgpKeyType">
+                                    <option value="RSA">RSA</option>
+                                    <option value="ECC">ECC (Elliptic Curve)</option>
+                                </select>
+                            </div>
+                            <!-- RSA-specific options -->
+                            <div class="mb-3" id="pgpRsaOptions">
+                                <label class="form-label">Key Length</label>
+                                <select class="form-select" name="keyLength">
+                                    <option value="2048">2048 bits</option>
+                                    <option value="3072">3072 bits</option>
+                                    <option value="4096">4096 bits</option>
+                                </select>
+                            </div>
+                            <!-- ECC-specific options -->
+                            <div class="mb-3" id="pgpEccOptions" style="display: none;">
+                                <label class="form-label">Curve</label>
+                                <select class="form-select" name="curve">
+                                    <option value="secp256k1">secp256k1</option>
+                                    <option value="secp384r1">secp384r1</option>
+                                    <option value="secp521r1">secp521r1</option>
+                                    <option value="brainpoolP256r1">brainpoolP256r1</option>
+                                    <option value="brainpoolP384r1">brainpoolP384r1</option>
+                                    <option value="brainpoolP512r1">brainpoolP512r1</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Expiration Time</label>
+                                <select class="form-select" name="expireTime">
+                                    <option value="1y">1 year</option>
+                                    <option value="2y">2 years</option>
+                                    <option value="3y">3 years</option>
+                                    <option value="5y">5 years</option>
+                                    <option value="never" selected>Never expire</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Passphrase (Optional but Recommended)</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" name="passphrase">
+                                    <button class="btn btn-outline-secondary toggle-password" type="button">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Generate PGP Key</button>
                         </form>
                     </div>
 
@@ -128,7 +179,7 @@
                                 <label class="form-label">Passphrase (Optional)</label>
                                 <div class="input-group">
                                     <input type="password" class="form-control" name="passphrase">
-                                    <button class="btn btn-outline-secondary toggle-password" type="button" onclick="togglePasswordHandler(event)">
+                                    <button class="btn btn-outline-secondary toggle-password" type="button">
                                         <i class="bi bi-eye"></i>
                                     </button>
                                 </div>
@@ -221,23 +272,6 @@
             }
             
             document.body.removeChild(tempTextArea);
-        }
-
-        function togglePasswordHandler(event) {
-            const button = event.currentTarget;
-            const inputGroup = button.closest('.input-group');
-            const passwordInput = inputGroup.querySelector('input[type="password"], input[type="text"]');
-            const icon = button.querySelector('i');
-            
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                icon.classList.remove('bi-eye');
-                icon.classList.add('bi-eye-slash');
-            } else {
-                passwordInput.type = 'password';
-                icon.classList.remove('bi-eye-slash');
-                icon.classList.add('bi-eye');
-            }
         }
     </script>
 </body>

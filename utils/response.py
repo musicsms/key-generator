@@ -14,11 +14,9 @@ def error_response(message, status_code=500):
         'error_message': str(message)
     }
 
-def info_response(message):
-    """Create an info response with message"""
+def info_response(data):
+    """Create an info response with data"""
     return {
         'success': True,
-        'data': {
-            'message': message
-        }
+        'data': data
     }

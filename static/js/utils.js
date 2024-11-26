@@ -94,24 +94,43 @@ export function copyToClipboard(elementId) {
 
 export function togglePasswordHandler(event) {
     const button = event.currentTarget;
-    const input = button.parentElement.querySelector('input[type="password"], input[type="text"]');
+    const inputGroup = button.closest('.input-group');
+    if (!inputGroup) {
+        console.error('No input group found for toggle password button');
+        return;
+    }
+
+    const passwordInput = inputGroup.querySelector('input[type="password"], input[type="text"]');
+    if (!passwordInput) {
+        console.error('No password input found in input group');
+        return;
+    }
+
     const icon = button.querySelector('i');
+    if (!icon) {
+        console.error('No icon found in toggle button');
+        return;
+    }
+
+    console.log('Toggling password visibility');
     
-    if (input && icon) {
-        if (input.type === 'password') {
-            input.type = 'text';
-            icon.classList.remove('bi-eye');
-            icon.classList.add('bi-eye-slash');
-        } else {
-            input.type = 'password';
-            icon.classList.remove('bi-eye-slash');
-            icon.classList.add('bi-eye');
-        }
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        icon.classList.remove('bi-eye');
+        icon.classList.add('bi-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        icon.classList.remove('bi-eye-slash');
+        icon.classList.add('bi-eye');
     }
 }
 
 export function attachTogglePassword() {
+    console.log('Attaching toggle password handlers');
     document.querySelectorAll('.toggle-password').forEach(button => {
+        // Remove any existing listeners to prevent duplicates
+        button.removeEventListener('click', togglePasswordHandler);
         button.addEventListener('click', togglePasswordHandler);
+        console.log('Attached toggle handler to button:', button);
     });
 }

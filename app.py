@@ -186,61 +186,47 @@ def rsa():
 def pgp():
     try:
         data = request.json or {}
-        comment = data.get('comment', '').strip()
         
-        # Generate the PGP key pair
-        result = generate_pgp_key(
-            name=data.get('name', ''),
-            email=data.get('email', ''),
-            passphrase=data.get('passphrase', '')
-        )
+        # Required parameters
+        name = data.get('name')
+        email = data.get('email')
         
-        if result.get('success'):
-            try:
-                # Create directory and save keys
-                dir_path = create_output_directory('pgp', comment)
-                save_key_pair(
-                    result['private_key'],
-                    result['public_key'],
-                    dir_path,
-                    'pgp'
-                )
-                
-                return jsonify({
-                    'success': True,
-                    'data': {
-                        'privateKey': result['private_key'],
-                        'publicKey': result['public_key'],
-                        'directory': dir_path
-                    }
-                })
-            except Exception as e:
-                # If saving fails, still return the keys but with a warning
-                return jsonify({
-                    'success': True,
-                    'warning': f'Keys generated but could not be saved: {str(e)}',
-                    'data': {
-                        'privateKey': result['private_key'],
-                        'publicKey': result['public_key']
-                    }
-                })
-        else:
+        if not name or not email:
             return jsonify({
                 'success': False,
-                'error_message': result.get('error_message', 'Failed to generate PGP key')
+                'error_message': 'Name and email are required'
             }), 400
-            
-    except ValueError as ve:
-        return jsonify({
-            'success': False,
-            'error_message': str(ve)
-        }), 400
+
+        # Optional parameters
+        comment = data.get('comment')
+        key_type = data.get('keyType', 'RSA')
+        key_length = data.get('keyLength')  # Optional for RSA
+        curve = data.get('curve')  # Optional for ECC
+        passphrase = data.get('passphrase')
+        expire_time = data.get('expireTime', '2y')
+
+        result = generate_pgp_key(
+            name=name,
+            email=email,
+            comment=comment,
+            key_type=key_type,
+            key_length=key_length,
+            curve=curve,
+            passphrase=passphrase,
+            expire_time=expire_time
+        )
+
+        if result.get('success'):
+            return jsonify(result)
+        else:
+            return jsonify(result), 400
+
     except Exception as e:
         print("PGP Key Generation Error:", str(e))
-        print(traceback.format_exc())
+        traceback.print_exc()
         return jsonify({
             'success': False,
-            'error_message': 'Internal server error'
+            'error_message': f'Failed to generate PGP key: {str(e)}'
         }), 500
 
 if __name__ == '__main__':
