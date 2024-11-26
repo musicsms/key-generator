@@ -59,34 +59,26 @@ def generate_pgp_key(name, email, comment=None, key_type="RSA", key_length=None,
         dict: Response containing the generated keys and status
     """
     try:
-        # Input validation
-        if not name or not email:
-            return error_response("Name and email are required")
-        
-        if key_type not in KEY_TYPES:
-            return error_response(f"Invalid key type. Supported types: {', '.join(KEY_TYPES.keys())}")
+        # Validate key type
+        key_type = key_type.upper()
+        if key_type not in ["RSA", "ECC"]:
+            return error_response("Invalid key type. Must be 'RSA' or 'ECC'")
 
-        # Handle key configuration based on type
+        # Validate and set key length for RSA
         if key_type == "RSA":
             if not key_length:
-                key_length = KEY_TYPES["RSA"]["default_length"]
-            if key_length not in KEY_TYPES["RSA"]["valid_lengths"]:
-                return error_response(f"Invalid RSA key length. Supported lengths: {KEY_TYPES['RSA']['valid_lengths']}")
-            algo_params = {
-                'key_type': key_type,
-                'key_length': key_length
-            }
-        else:  # ECC
-            if not curve:
-                curve = KEY_TYPES["ECC"]["default_curve"]
-            if curve not in KEY_TYPES["ECC"]["curves"]:
-                return error_response(f"Invalid ECC curve. Supported curves: {KEY_TYPES['ECC']['curves']}")
-            algo_params = {
-                'key_type': 'ECC',
-                'curve': curve
-            }
+                key_length = 2048
+            if key_length not in [2048, 4096]:
+                return error_response("Invalid key length for RSA. Must be 2048 or 4096")
 
-        # Calculate expiration date
+        # Validate curve for ECC
+        if key_type == "ECC":
+            if not curve:
+                curve = "secp256r1"
+            valid_curves = ["secp256r1", "secp384r1", "secp521r1"]
+            if curve not in valid_curves:
+                return error_response(f"Invalid curve. Must be one of: {', '.join(valid_curves)}")
+
         try:
             expire_date = _calculate_expire_date(expire_time)
         except ValueError as e:
@@ -104,6 +96,19 @@ def generate_pgp_key(name, email, comment=None, key_type="RSA", key_length=None,
             # Fall back for older versions
             gpg = gnupg.GPG(homedir=gpg_home)
         
+        # Check if GPG is properly installed
+        try:
+            gpg.list_keys()
+        except Exception as e:
+            if "not installed" in str(e).lower():
+                return error_response(
+                    "GnuPG (GPG) is not installed on your system. Please install it first:\n"
+                    "- Windows: Download and install from https://www.gpg4win.org\n"
+                    "- macOS: Install using 'brew install gnupg'\n"
+                    "- Linux: Install using 'apt-get install gnupg' or your distro's package manager"
+                )
+            return error_response(f"GPG error: {str(e)}")
+
         # Prepare key input
         name_string = name
         if comment:
@@ -114,18 +119,21 @@ def generate_pgp_key(name, email, comment=None, key_type="RSA", key_length=None,
             'name_email': email,
             'expire_date': expire_date,
             'key_usage': 'encrypt,sign,auth',
-            **algo_params  # Include key type specific parameters
         }
 
-        # Add subkey configuration
+        # Add key type specific parameters
         if key_type == "RSA":
             key_input.update({
+                'key_type': key_type,
+                'key_length': key_length,
                 'subkey_type': key_type,
                 'subkey_length': key_length,
                 'subkey_usage': 'encrypt,sign'
             })
         else:
             key_input.update({
+                'key_type': 'ECC',
+                'curve': curve,
                 'subkey_type': 'ECC',
                 'subkey_curve': curve,
                 'subkey_usage': 'encrypt,sign'

@@ -15,9 +15,13 @@ A secure web-based tool for generating various types of cryptographic key pairs 
 
 ## Prerequisites
 
-- Python 3.8 or higher
-- pip (Python package manager)
-- virtualenv (recommended)
+1. Python 3.8 or higher
+2. pip (Python package manager)
+3. virtualenv (recommended)
+4. GnuPG (GPG) installation:
+   - Windows: Download and install [Gpg4win](https://www.gpg4win.org)
+   - macOS: Install using Homebrew: `brew install gnupg`
+   - Linux: Install using package manager: `apt-get install gnupg` or equivalent
 
 ## Installation
 
