@@ -1,7 +1,9 @@
+import re
 import gnupg
 import os
 from datetime import datetime, timedelta
 from utils.response import info_response, error_response
+from utils.sanitize import validate_comment
 
 # Key type configurations
 KEY_TYPES = {
@@ -63,6 +65,13 @@ def generate_pgp_key(name, email, comment=None, key_type="RSA", key_length=None,
         key_type = key_type.upper()
         if key_type not in ["RSA", "ECC"]:
             return error_response("Invalid key type. Must be 'RSA' or 'ECC'")
+
+        # Validate and sanitize comment if provided
+        try:
+            if comment:
+                comment = validate_comment(comment)
+        except ValueError as e:
+            return error_response(str(e))
 
         # Validate and set key length for RSA
         if key_type == "RSA":

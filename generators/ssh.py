@@ -2,6 +2,9 @@ import os
 import sys
 import uuid
 import traceback
+import paramiko
+from utils.response import info_response, error_response
+from utils.sanitize import validate_comment
 
 # Ensure proper encoding is set
 os.environ['LC_ALL'] = 'en_US.UTF-8'
@@ -10,14 +13,33 @@ os.environ['LANG'] = 'en_US.UTF-8'
 from cryptography.hazmat.primitives.asymmetric import rsa, ec, ed25519
 from cryptography.hazmat.primitives import serialization
 
-def generate_ssh_key(key_type='rsa', key_size=2048, passphrase=None):
-    """Generate an SSH key pair with support for multiple key types"""
-    try:
-        # Validate and normalize inputs
-        key_type = str(key_type).lower()
-        key_size = int(key_size)
+def generate_ssh_key(key_type="rsa", key_size=2048, comment=None, passphrase=None):
+    """
+    Generate an SSH key pair.
+    
+    Args:
+        key_type (str): Type of key to generate (rsa, ecdsa, ed25519)
+        key_size (int): Key size for RSA/ECDSA keys
+        comment (str, optional): Comment to add to the key
+        passphrase (str, optional): Passphrase to protect the private key
         
-        # Validate key type and size
+    Returns:
+        dict: Response containing the generated keys and status
+    """
+    try:
+        # Validate key type
+        key_type = key_type.lower()
+        if key_type not in ["rsa", "ecdsa", "ed25519"]:
+            return error_response("Invalid key type. Must be 'rsa', 'ecdsa', or 'ed25519'")
+
+        # Validate and sanitize comment if provided
+        try:
+            if comment:
+                comment = validate_comment(comment)
+        except ValueError as e:
+            return error_response(str(e))
+
+        # Validate key size based on type
         if key_type == 'rsa':
             if key_size not in [2048, 4096]:
                 raise ValueError("RSA key size must be 2048 or 4096 bits")
