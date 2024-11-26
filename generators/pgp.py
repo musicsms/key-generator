@@ -1,9 +1,10 @@
 import re
 import gnupg
 import os
+import sys
+import subprocess
 from datetime import datetime, timedelta
 from utils.response import info_response, error_response
-from utils.sanitize import validate_comment
 
 # Key type configurations
 KEY_TYPES = {
@@ -42,25 +43,65 @@ def _calculate_expire_date(expire_time):
     except ValueError:
         raise ValueError("Invalid expiration time format. Use 'Xy' where X is number of years, or 'never'")
 
-def generate_pgp_key(name, email, comment=None, key_type="RSA", key_length=None, curve=None, 
-                    passphrase=None, expire_time="2y"):
+def _check_gpg_installation():
     """
-    Generate a PGP key pair.
-    
-    Args:
-        name (str): Real name of the key owner
-        email (str): Email address of the key owner
-        comment (str, optional): Optional comment for the key
-        key_type (str): Key type ('RSA' or 'ECC')
-        key_length (int, optional): Key length for RSA keys
-        curve (str, optional): Curve name for ECC keys
-        passphrase (str, optional): Optional passphrase for the private key
-        expire_time (str, optional): Expiration time ('1y', '2y', 'never'), defaults to '2y'
+    Check if GPG is properly installed and accessible.
     
     Returns:
-        dict: Response containing the generated keys and status
+        tuple: (bool, str) - (is_installed, error_message)
     """
     try:
+        # Try to run gpg --version
+        if sys.platform == 'win32':
+            # Check common Windows GPG installation paths
+            gpg_paths = [
+                os.path.join(os.environ.get('ProgramFiles', ''), 'GnuPG', 'bin', 'gpg.exe'),
+                os.path.join(os.environ.get('ProgramFiles(x86)', ''), 'GnuPG', 'bin', 'gpg.exe'),
+                'gpg.exe'  # If in PATH
+            ]
+            
+            for path in gpg_paths:
+                try:
+                    subprocess.run([path, '--version'], 
+                                capture_output=True, 
+                                text=True, 
+                                check=True)
+                    return True, None
+                except (subprocess.CalledProcessError, FileNotFoundError):
+                    continue
+                    
+            return False, (
+                "GnuPG (GPG) is not properly configured on Windows. Please:\n"
+                "1. Install Gpg4win from https://www.gpg4win.org\n"
+                "2. Ensure GPG is added to your system PATH\n"
+                "3. Restart your computer after installation\n"
+                "4. If still not working, try running the application as administrator"
+            )
+        else:
+            # Unix-like systems
+            subprocess.run(['gpg', '--version'], 
+                         capture_output=True, 
+                         text=True, 
+                         check=True)
+            return True, None
+    except subprocess.CalledProcessError as e:
+        return False, f"GPG error: {e.stderr}"
+    except FileNotFoundError:
+        return False, (
+            "GnuPG (GPG) is not installed. Please install it:\n"
+            "- Windows: Download and install from https://www.gpg4win.org\n"
+            "- macOS: Install using 'brew install gnupg'\n"
+            "- Linux: Install using 'apt-get install gnupg'"
+        )
+
+def generate_pgp_key(name, email, comment=None, key_type="RSA", key_length=None, curve=None, 
+                    passphrase=None, expire_time="2y"):
+    try:
+        # Check GPG installation first
+        gpg_installed, error_message = _check_gpg_installation()
+        if not gpg_installed:
+            return error_response(error_message)
+
         # Validate key type
         key_type = key_type.upper()
         if key_type not in ["RSA", "ECC"]:
@@ -104,18 +145,16 @@ def generate_pgp_key(name, email, comment=None, key_type="RSA", key_length=None,
         except TypeError:
             # Fall back for older versions
             gpg = gnupg.GPG(homedir=gpg_home)
-        
-        # Check if GPG is properly installed
+            
+        # Try to list keys to verify GPG is working
         try:
             gpg.list_keys()
         except Exception as e:
-            if "not installed" in str(e).lower():
-                return error_response(
-                    "GnuPG (GPG) is not installed on your system. Please install it first:\n"
-                    "- Windows: Download and install from https://www.gpg4win.org\n"
-                    "- macOS: Install using 'brew install gnupg'\n"
-                    "- Linux: Install using 'apt-get install gnupg' or your distro's package manager"
-                )
+            error_msg = str(e).lower()
+            if "not installed" in error_msg or "cannot run" in error_msg:
+                gpg_installed, error_message = _check_gpg_installation()
+                if not gpg_installed:
+                    return error_response(error_message)
             return error_response(f"GPG error: {str(e)}")
 
         # Prepare key input
