@@ -46,3 +46,6 @@ keys/
 *.pem
 *.key
 *.pub
+
+# Docker
+*.tar

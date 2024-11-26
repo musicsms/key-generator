@@ -5,6 +5,7 @@ import sys
 import subprocess
 from datetime import datetime, timedelta
 from utils.response import info_response, error_response
+from utils.sanitize import validate_comment
 
 # Key type configurations
 KEY_TYPES = {
