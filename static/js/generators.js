@@ -1,18 +1,6 @@
 // Generation handlers for different key types
 import { showLoading, hideLoading, displayMessage, clearOutputs } from './utils.js';
-
-function validateComment(comment) {
-    if (!comment) {
-        throw new Error('Comment is required');
-    }
-    if (comment.length > 40) {
-        throw new Error('Comment must be shorter than 40 characters');
-    }
-    if (comment.includes(' ')) {
-        throw new Error('Comment cannot contain spaces, use underscores instead');
-    }
-    return comment;
-}
+import { validateComment } from './validation.js';
 
 export function handlePassphraseGeneration(e) {
     e.preventDefault();
@@ -70,33 +58,38 @@ export function handlePassphraseGeneration(e) {
 
 export function handleSSHKeyGeneration(e) {
     e.preventDefault();
-    const form = e.target;
-    const formData = new FormData(form);
+    clearOutputs();
     
     try {
-        const comment = validateComment(formData.get('comment'));
+        const form = e.target;
+        const formData = new FormData(form);
         
-        const data = {
-            comment: comment,
-            keyType: formData.get('keyType') || 'rsa',
-            keySize: parseInt(formData.get('keySize') || 2048),
-            passphrase: formData.get('passphrase') || ''
-        };
+        // Validate and sanitize inputs
+        const comment = validateComment(formData.get('comment'));
+        const keyType = formData.get('keyType');
+        const keySize = parseInt(formData.get('keySize'));
+        const passphrase = formData.get('passphrase');
 
         showLoading();
 
+        // Make API request
         fetch('/generate/ssh', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(data)
+            body: JSON.stringify({
+                comment: comment,
+                keyType: keyType,
+                keySize: keySize,
+                passphrase: passphrase
+            })
         })
         .then(response => response.json())
         .then(result => {
             hideLoading();
             if (result.success) {
-                displayMessage(`SSH key pair generated successfully in directory: ${result.data.directory}`, 'success');
+                displayMessage(`SSH key pair generated successfully!`, 'success');
                 displayKeys(result.data.privateKey, result.data.publicKey);
             } else {
                 displayMessage(result.error_message || 'Failed to generate SSH key', 'danger');
@@ -113,32 +106,36 @@ export function handleSSHKeyGeneration(e) {
 
 export function handleRSAKeyGeneration(e) {
     e.preventDefault();
-    const form = e.target;
-    const formData = new FormData(form);
+    clearOutputs();
     
     try {
-        const comment = validateComment(formData.get('comment'));
+        const form = e.target;
+        const formData = new FormData(form);
         
-        const data = {
-            comment: comment,
-            keySize: parseInt(formData.get('keySize') || 2048),
-            passphrase: formData.get('passphrase') || ''
-        };
+        // Validate and sanitize inputs
+        const comment = validateComment(formData.get('comment'));
+        const keySize = parseInt(formData.get('keySize'));
+        const passphrase = formData.get('passphrase');
 
         showLoading();
 
+        // Make API request
         fetch('/generate/rsa', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(data)
+            body: JSON.stringify({
+                comment: comment,
+                keySize: keySize,
+                passphrase: passphrase
+            })
         })
         .then(response => response.json())
         .then(result => {
             hideLoading();
             if (result.success) {
-                displayMessage(`RSA key pair generated successfully in directory: ${result.data.directory}`, 'success');
+                displayMessage(`RSA key pair generated successfully!`, 'success');
                 displayKeys(result.data.privateKey, result.data.publicKey);
             } else {
                 displayMessage(result.error_message || 'Failed to generate RSA key', 'danger');
@@ -153,63 +150,47 @@ export function handleRSAKeyGeneration(e) {
     }
 }
 
-// PGP Key Type and Options Mapping
-export const PGP_KEY_OPTIONS = {
-    RSA: {
-        lengths: [
-            { value: '2048', label: '2048 bits' },
-            { value: '3072', label: '3072 bits' },
-            { value: '4096', label: '4096 bits' }
-        ]
-    },
-    ECC: {
-        curves: [
-            { value: 'secp256k1', label: 'secp256k1' },
-            { value: 'secp384r1', label: 'secp384r1' },
-            { value: 'secp521r1', label: 'secp521r1' },
-            { value: 'brainpoolP256r1', label: 'brainpoolP256r1' },
-            { value: 'brainpoolP384r1', label: 'brainpoolP384r1' },
-            { value: 'brainpoolP512r1', label: 'brainpoolP512r1' }
-        ]
-    }
-};
-
 export async function handlePGPKeyGeneration(e) {
     e.preventDefault();
-    const form = e.target;
-    const formData = new FormData(form);
+    clearOutputs();
     
-    const data = {
-        name: formData.get('name'),
-        email: formData.get('email'),
-        comment: formData.get('comment') || null,
-        keyType: formData.get('keyType'),
-        expireTime: formData.get('expireTime')
-    };
-
-    // Add key type specific parameters
-    if (data.keyType === 'RSA') {
-        data.keyLength = parseInt(formData.get('keyLength'));
-    } else {
-        data.curve = formData.get('curve');
-    }
-
-    // Add passphrase if provided
-    const passphrase = formData.get('passphrase');
-    if (passphrase) {
-        data.passphrase = passphrase;
-    }
-
-    console.log('Submitting PGP key generation:', data);
-    showLoading();
-
     try {
+        const form = e.target;
+        const formData = new FormData(form);
+        
+        // Validate and sanitize inputs
+        const comment = validateComment(formData.get('comment'));
+        const keyType = formData.get('keyType');
+        const keySize = parseInt(formData.get('keySize'));
+        const curve = formData.get('curve');
+        const name = formData.get('name').trim();
+        const email = formData.get('email').trim();
+        const passphrase = formData.get('passphrase');
+        const expireTime = formData.get('expireTime');
+
+        // Additional validations
+        if (!name || !email) {
+            throw new Error('Name and email are required for PGP keys');
+        }
+
+        showLoading();
+
+        // Make API request
         const response = await fetch('/generate/pgp', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(data)
+            body: JSON.stringify({
+                name: name,
+                email: email,
+                comment: comment,
+                keyType: keyType,
+                keyLength: keySize,
+                curve: curve,
+                passphrase: passphrase,
+                expireTime: expireTime
+            })
         });
 
         const result = await response.json();
@@ -259,11 +240,10 @@ export async function handlePGPKeyGeneration(e) {
                     <h5>Key Details:</h5>
                     <ul class="mb-0">
                         <li>Key ID: ${keyData.keyId || 'N/A'}</li>
-                        <li>Key Type: ${keyData.keyType || data.keyType}</li>
+                        <li>Key Type: ${keyData.keyType || keyType}</li>
                         ${keyData.keyLength ? `<li>Key Length: ${keyData.keyLength} bits</li>` : ''}
                         ${keyData.curve ? `<li>Curve: ${keyData.curve}</li>` : ''}
                         <li>Expiration: ${keyData.expireDate || 'N/A'}</li>
-                        <li>Saved in: ${keyData.directory || 'N/A'}</li>
                     </ul>
                 `;
                 keyPairResult.appendChild(additionalInfo);
@@ -305,3 +285,24 @@ export function displayPassphrase(passphrase) {
     if (passphraseResult) passphraseResult.style.display = 'block';
     if (passphraseOutput) passphraseOutput.value = passphrase;
 }
+
+// PGP Key Type and Options Mapping
+export const PGP_KEY_OPTIONS = {
+    RSA: {
+        lengths: [
+            { value: '2048', label: '2048 bits' },
+            { value: '3072', label: '3072 bits' },
+            { value: '4096', label: '4096 bits' }
+        ]
+    },
+    ECC: {
+        curves: [
+            { value: 'secp256k1', label: 'secp256k1' },
+            { value: 'secp384r1', label: 'secp384r1' },
+            { value: 'secp521r1', label: 'secp521r1' },
+            { value: 'brainpoolP256r1', label: 'brainpoolP256r1' },
+            { value: 'brainpoolP384r1', label: 'brainpoolP384r1' },
+            { value: 'brainpoolP512r1', label: 'brainpoolP512r1' }
+        ]
+    }
+};
