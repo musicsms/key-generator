@@ -96,8 +96,13 @@ def generate_pgp_key(name, email, comment=None, key_type="RSA", key_length=None,
         gpg_home = os.path.join(os.getcwd(), 'keys', 'gpg')
         os.makedirs(gpg_home, exist_ok=True)
 
-        # Initialize GPG
-        gpg = gnupg.GPG(gnupghome=gpg_home)
+        # Initialize GPG with cross-platform compatibility
+        try:
+            # Try newer versions of python-gnupg
+            gpg = gnupg.GPG(gnupghome=gpg_home)
+        except TypeError:
+            # Fall back for older versions
+            gpg = gnupg.GPG(homedir=gpg_home)
         
         # Prepare key input
         name_string = name
