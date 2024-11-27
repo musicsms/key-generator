@@ -7,7 +7,7 @@ services:
     ports:
       - "5001:5001"
     volumes:
-      - ./keys:/app/keys
+      - key-storage:/app/keys
       - gpg-home:/home/appuser/.gnupg
     environment:
       - FLASK_APP=app.py
@@ -41,4 +41,6 @@ services:
 
 volumes:
   gpg-home:
+    driver: local
+  key-storage:
     driver: local
