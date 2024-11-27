@@ -39,39 +39,14 @@ Security Features:
   - SSH Keys (RSA, ECDSA, ED25519)
   - RSA Keys (2048/4096 bits)
   - PGP Keys
+  - Passphrase Generation
 - Custom comments for key organization
 - Secure key storage with organized directory structure
 - Optional passphrase protection
-- Modern web interface with Bootstrap
+- Modern web interface
 - Docker multi-arch support (AMD64/ARM64)
 - Health check endpoints
 - Comprehensive test coverage
-
-## Testing
-
-### Functional Testing
-The project includes comprehensive test coverage:
-- Unit tests for all key generation functions
-- Integration tests for API endpoints
-- Environment and configuration tests
-- Error handling and edge cases
-
-Run tests locally:
-```bash
-pytest tests/ -v --cov=./ --cov-report=term-missing
-```
-
-### Security Testing
-Security scanning is performed automatically:
-- Snyk vulnerability scanning (requires `SNYK_TOKEN`)
-- Bandit static code analysis
-- GitHub CodeQL analysis
-- Weekly scheduled security scans
-
-To enable Snyk scanning:
-1. Create a Snyk account at https://snyk.io
-2. Generate a Snyk API token
-3. Add the token as `SNYK_TOKEN` in your GitHub repository secrets
 
 ## Prerequisites
 
@@ -93,15 +68,11 @@ docker pull musicsms/key-generator:latest
 docker run -d \
   --name key-generator \
   -p 5001:5001 \
+  -e FLASK_ENV=production \
   -v key-storage:/app/keys \
   -v gpg-home:/home/appuser/.gnupg \
   musicsms/key-generator:latest
-
-# Or use Docker Compose
-docker-compose up -d
 ```
-
-The application will be available at `http://localhost:5001`
 
 ## Development Setup
 
@@ -122,64 +93,54 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. Run tests:
+4. Run the application:
 ```bash
-pytest tests/ -v
-```
+# Development mode
+FLASK_ENV=development python app.py
 
-5. Start the development server:
-```bash
-python app.py
+# Production mode
+FLASK_ENV=production python app.py
 ```
 
 ## Production Deployment
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| FLASK_APP | Flask application entry | app.py |
-| FLASK_ENV | Environment (production/development) | production |
-| PORT | Application port | 5001 |
-| GNUPGHOME | GnuPG home directory | /home/appuser/.gnupg |
-| KEY_STORAGE_PATH | Path to store generated keys | /app/keys |
-
-### Docker Volumes
-
-| Volume | Purpose | Path |
-|--------|---------|------|
-| key-storage | Store generated keys | /app/keys |
-| gpg-home | GnuPG configuration | /home/appuser/.gnupg |
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| FLASK_ENV | Environment mode | `production` | Optional |
+| FLASK_APP | Flask application entry | `app.py` | Optional |
+| PORT | Application port | `5001` | Optional |
+| SECRET_KEY | Encryption secret | `CHANGE_ME_IN_PRODUCTION` | **Recommended** |
+| GNUPGHOME | GnuPG home directory | `/home/appuser/.gnupg` | Optional |
+| KEYS_DIR | Path to store generated keys | `/app/keys` | Optional |
 
 ### Security Recommendations
 
 1. Always use HTTPS in production
-2. Set up proper firewall rules
-3. Use Docker volumes instead of bind mounts
-4. Keep the base image updated
-5. Monitor security scans in Docker Scout
-6. Review Snyk security reports
-7. Enable Docker content trust
+2. Set a strong, unique `SECRET_KEY`
+3. Use Docker volumes for persistent storage
+4. Keep base image and dependencies updated
+5. Monitor security scans
+6. Enable Docker content trust
 
 ### Health Monitoring
 
-The application provides a health check endpoint at `/health` that returns:
+The application provides a health check endpoint at `/health`:
 ```json
 {
-  "status": "healthy",
-  "version": "1.0.8",
-  "timestamp": "2024-01-20T12:00:00Z"
+  "status": "healthy"
 }
 ```
 
-## API Documentation
+## API Endpoints
 
 ### Generate SSH Key
 ```bash
 curl -X POST http://localhost:5001/generate/ssh \
   -H "Content-Type: application/json" \
   -d '{
-    "key_type": "ed25519",
+    "keyType": "ed25519",
     "comment": "user@example.com"
   }'
 ```
@@ -189,8 +150,19 @@ curl -X POST http://localhost:5001/generate/ssh \
 curl -X POST http://localhost:5001/generate/rsa \
   -H "Content-Type: application/json" \
   -d '{
-    "key_size": 4096,
+    "keySize": 4096,
     "passphrase": "optional-secure-passphrase"
+  }'
+```
+
+### Generate Passphrase
+```bash
+curl -X POST http://localhost:5001/generate/passphrase \
+  -H "Content-Type: application/json" \
+  -d '{
+    "length": 24,
+    "includeNumbers": true,
+    "includeSpecial": true
   }'
 ```
 

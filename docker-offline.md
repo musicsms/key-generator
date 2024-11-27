@@ -1,121 +1,103 @@
-# Running Key Generator in Docker Offline
-
-This guide explains how to build and run the Key Generator application using Docker in an offline environment.
+# Offline Docker Deployment Guide for Key Generator
 
 ## Prerequisites
 
-- Docker (for building and running the container)
-- Internet connection (only for initial build)
-- QEMU for cross-platform builds (if building on ARM64 for AMD64)
+- Docker (version 20.10 or higher)
+- Offline Docker image tarball
+- Linux/macOS/Windows with Docker support
 
-## Step 1: Prepare Build Environment (On ARM64 Machine with Internet)
+## Offline Installation Steps
 
-1. Install QEMU and enable multi-architecture support:
+### 1. Load Docker Image
+
 ```bash
-docker run --privileged --rm tonistiigi/binfmt --install all
-```
-
-2. Navigate to the project directory:
-```bash
-cd key-generator
-```
-
-3. Build the Docker image for AMD64:
-```bash
-docker buildx create --use
-docker buildx build --platform linux/amd64 -t key-generator:latest --load .
-```
-
-4. Save the image to a tar file:
-```bash
-docker save -o key-generator.tar key-generator:latest
-```
-
-## Step 2: Transfer the Image (To Offline Machine)
-
-Transfer the `key-generator.tar` file to the offline machine using any available method (USB drive, network transfer, etc.).
-
-## Step 3: Load and Run with Docker (On Offline AMD64 Machine)
-
-1. Load the image into Docker:
-```bash
+# Load the image from the tarball
 docker load -i key-generator.tar
 ```
 
-2. Run the container:
+### 2. Verify Image
+
 ```bash
+# Confirm the image is loaded
+docker images | grep key-generator
+```
+
+### 3. Run Offline Container
+
+```bash
+# Basic run command
 docker run -d \
   --name key-generator \
   -p 5001:5001 \
-  -v ./keys:/app/keys \
+  -e FLASK_ENV=production \
+  -e SECRET_KEY=your-secure-secret-key \
+  -v key-storage:/app/keys \
+  -v gpg-home:/home/appuser/.gnupg \
   key-generator:latest
 ```
 
-The application will be available at `http://localhost:5001`
+### Environment Variables
 
-## Container Management Commands
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| FLASK_ENV | Environment mode | Optional | `production` |
+| PORT | Application port | Optional | `5001` |
+| SECRET_KEY | Encryption secret | **Recommended** | `CHANGE_ME_IN_PRODUCTION` |
+| GNUPGHOME | GnuPG home directory | Optional | `/home/appuser/.gnupg` |
+| KEYS_DIR | Path to store generated keys | Optional | `/app/keys` |
 
-- Stop the container:
+### Security Recommendations
+
+1. Always generate a unique `SECRET_KEY`
+2. Use persistent volumes for key storage
+3. Limit network access to the container
+4. Regularly update the offline image
+
+### Accessing the Application
+
+- Web Interface: `http://localhost:5001`
+- Health Check: `http://localhost:5001/health`
+
+### Troubleshooting
+
+- Check container logs: 
+  ```bash
+  docker logs key-generator
+  ```
+- Verify container status:
+  ```bash
+  docker ps | grep key-generator
+  ```
+
+## Offline Key Generation Examples
+
+### SSH Key
 ```bash
-docker stop key-generator
+curl -X POST http://localhost:5001/generate/ssh \
+  -H "Content-Type: application/json" \
+  -d '{
+    "keyType": "ed25519",
+    "comment": "offline-user@example.com"
+  }'
 ```
 
-- Start an existing container:
+### RSA Key
 ```bash
-docker start key-generator
+curl -X POST http://localhost:5001/generate/rsa \
+  -H "Content-Type: application/json" \
+  -d '{
+    "keySize": 4096,
+    "passphrase": "optional-secure-passphrase"
+  }'
 ```
 
-- Remove the container:
+### Passphrase Generation
 ```bash
-docker rm key-generator
-```
-
-- View container logs:
-```bash
-docker logs key-generator
-```
-
-## Volume Management
-
-The container uses a local volume `./keys` to persist generated keys. This directory will be created automatically when you first run the container.
-
-- List volumes:
-```bash
-docker volume ls
-```
-
-- Inspect volume:
-```bash
-docker volume inspect key-generator
-```
-
-- Remove volume (warning: this will delete all generated keys):
-```bash
-rm -rf ./keys
-```
-
-## Security Notes
-
-1. The container runs with minimal privileges
-2. Key storage is isolated in a dedicated volume
-3. All connections are made through port 5001
-4. The application runs with production-grade Gunicorn server
-
-## Using Docker Compose
-
-You can also use Docker Compose for easier management:
-
-1. Start the application:
-```bash
-docker-compose up -d
-```
-
-2. Stop the application:
-```bash
-docker-compose down
-```
-
-3. View logs:
-```bash
-docker-compose logs -f
+curl -X POST http://localhost:5001/generate/passphrase \
+  -H "Content-Type: application/json" \
+  -d '{
+    "length": 24,
+    "includeNumbers": true,
+    "includeSpecial": true
+  }'
 ```

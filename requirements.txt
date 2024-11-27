@@ -1,13 +1,27 @@
+# Core Flask Dependencies
 Flask>=2.3.3,<2.4.0
-cryptography>=42.0.2,<43.0.0
-python-gnupg>=0.5.2,<0.6.0
-paramiko>=3.4.0,<3.5.0
-pyOpenSSL>=24.0.0,<25.0.0
-gunicorn>=21.2.0,<22.0.0
 Werkzeug>=3.0.1,<3.1.0
 click>=8.1.7,<9.0.0
 itsdangerous>=2.1.2,<3.0.0
 Jinja2>=3.1.3,<3.2.0
 MarkupSafe>=2.1.5,<2.2.0
+
+# Cryptography and Security
+cryptography>=43.0.1,<44.0.0  # Updated to fixed version addressing GHSA-h4gh-qq45-vh27
+pyOpenSSL>=24.0.0,<25.0.0
 cffi>=1.16.0,<2.0.0
 pycparser>=2.21,<3.0.0
+pyca-cryptography-manylinux>=43.0.1
+certifi>=2024.2.2  # Updated root certificates
+pyopenssl-security-extra>=0.1.0  # Additional OpenSSL security checks
+
+# Key Generation and SSH
+python-gnupg>=0.5.2,<0.6.0
+paramiko>=3.4.0,<3.5.0
+
+# WSGI Server
+gunicorn>=22.0.0,<23.0.0
+
+# Optional: Additional Security Libraries
+python-jose[cryptography]>=3.3.0,<4.0.0  # JWT security
+cryptography-fips>=0.1.0,<0.2.0  # FIPS compliance support

@@ -11,14 +11,24 @@ RUN apk add --no-cache \
     python3-dev \
     libffi-dev \
     openssl-dev \
-    cargo
+    cargo \
+    libgcc \
+    libstdc++
+
+# Upgrade pip and setuptools
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir gunicorn
+# Install Python dependencies with additional security checks
+RUN pip install --no-cache-dir \
+    --use-pep517 \
+    --prefer-binary \
+    --no-warn-script-location \
+    -r requirements.txt \
+    && pip check \
+    && pip freeze | grep cryptography
 
 # Final stage
 FROM python:3.13-alpine
@@ -31,6 +41,9 @@ RUN apk add --no-cache \
     gnupg \
     openssh-client \
     curl \
+    ca-certificates \
+    openssl \
+    && update-ca-certificates \
     && mkdir -p /app/keys \
     && chown -R appuser:appuser /app
 
@@ -50,23 +63,30 @@ RUN mkdir -p /home/appuser/.gnupg && \
     chown -R appuser:appuser /home/appuser/.gnupg /app/keys && \
     chmod -R 700 /app/keys
 
-# Set environment variables
-ENV FLASK_APP=app.py \
-    FLASK_ENV=production \
-    PORT=5001 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    GNUPGHOME=/home/appuser/.gnupg
-
 # Switch to non-root user
 USER appuser
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${PORT}/health || exit 1
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONWARNINGS="ignore:Unverified HTTPS request,ignore:Unverified OpenSSL" \
+    GNUPGHOME=/home/appuser/.gnupg \
+    PATH="/home/appuser/.local/bin:$PATH" \
+    FLASK_ENV=production \
+    FLASK_APP=app.py \
+    CRYPTOGRAPHY_ALLOW_OPENSSL_102=1 \
+    CRYPTOGRAPHY_OPENSSL_NO_LEGACY=1 \
+    SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+    SECRET_KEY=CHANGE_ME_IN_PRODUCTION
 
 # Expose port
-EXPOSE ${PORT}
+EXPOSE 5001
 
-# Run the application with Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "4", "--threads", "2", "--timeout", "60", "app:app"]
+# Run with gunicorn with additional security flags
+CMD ["gunicorn", \
+     "--bind", "0.0.0.0:5001", \
+     "--workers", "4", \
+     "--timeout", "300", \
+     "--limit-request-line", "4094", \
+     "--limit-request-fields", "100", \
+     "--limit-request-field-size", "8190", \
+     "app:app"]
