@@ -11,9 +11,12 @@ from utils.utils import create_output_directory, save_key_pair
 
 app = Flask(__name__)
 
-# Ensure the keys directory exists
-if not os.path.exists('keys'):
-    os.makedirs('keys')
+# Ensure the keys directory structure exists
+base_path = os.getenv('KEY_STORAGE_PATH', 'keys')
+for key_type in ['ssh', 'rsa', 'pgp']:
+    dir_path = os.path.join(base_path, key_type)
+    os.makedirs(dir_path, exist_ok=True)
+    os.chmod(dir_path, 0o700)
 
 @app.route('/')
 def index():
@@ -61,20 +64,32 @@ def ssh():
         data = request.json or {}
         comment = data.get('comment', '').strip()
         
+        # Get key_size if provided, otherwise let generator use default
+        key_size = data.get('keySize')
+        if key_size is not None:
+            key_size = int(key_size)
+        
         # Generate the SSH key pair
         result = generate_ssh_key(
             key_type=data.get('keyType', 'rsa'),
-            key_size=int(data.get('keySize', 2048)),
+            key_size=key_size,
+            comment=comment,
             passphrase=data.get('passphrase', '')
         )
         
+        if not isinstance(result, dict):
+            return jsonify({
+                'success': False,
+                'error_message': str(result)
+            }), 400
+            
         if result.get('success'):
             try:
                 # Create directory and save keys
                 dir_path = create_output_directory('ssh', comment)
                 private_path, public_path = save_key_pair(
-                    result['privateKey'],
-                    result['publicKey'],
+                    result['data']['privateKey'],
+                    result['data']['publicKey'],
                     dir_path,
                     'ssh'
                 )
@@ -82,10 +97,10 @@ def ssh():
                 return jsonify({
                     'success': True,
                     'data': {
-                        'privateKey': result['privateKey'],
-                        'publicKey': result['publicKey'],
-                        'keyType': result['keyType'],
-                        'keySize': result['keySize'],
+                        'privateKey': result['data']['privateKey'],
+                        'publicKey': result['data']['publicKey'],
+                        'keyType': result['data']['keyType'],
+                        'keySize': result['data']['keySize'],
                         'directory': dir_path,
                         'privatePath': private_path,
                         'publicPath': public_path
@@ -97,10 +112,10 @@ def ssh():
                     'success': True,
                     'warning': f'Keys generated but could not be saved: {str(e)}',
                     'data': {
-                        'privateKey': result['privateKey'],
-                        'publicKey': result['publicKey'],
-                        'keyType': result['keyType'],
-                        'keySize': result['keySize']
+                        'privateKey': result['data']['privateKey'],
+                        'publicKey': result['data']['publicKey'],
+                        'keyType': result['data']['keyType'],
+                        'keySize': result['data']['keySize']
                     }
                 })
         else:
@@ -119,7 +134,7 @@ def ssh():
         print(traceback.format_exc())
         return jsonify({
             'success': False,
-            'error_message': 'Internal server error'
+            'error_message': f'Failed to generate SSH key: {str(e)}'
         }), 500
 
 @app.route('/generate/rsa', methods=['POST'])

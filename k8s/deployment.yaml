@@ -25,7 +25,7 @@ spec:
         image: key-generator:latest
         imagePullPolicy: IfNotPresent
         ports:
-        - containerPort: 5001
+        - containerPort: 5000
         resources:
           requests:
             memory: "256Mi"
@@ -33,16 +33,29 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
+        env:
+        - name: FLASK_APP
+          value: "app.py"
+        - name: FLASK_ENV
+          value: "production"
+        - name: PYTHONDONTWRITEBYTECODE
+          value: "1"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: KEY_STORAGE_PATH
+          value: "/app/keys"
+        - name: GNUPGHOME
+          value: "/app/keys/.gnupg"
         livenessProbe:
           httpGet:
             path: /health
-            port: 5001
+            port: 5000
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
             path: /health
-            port: 5001
+            port: 5000
           initialDelaySeconds: 5
           periodSeconds: 5
         volumeMounts:
@@ -56,4 +69,4 @@ spec:
       volumes:
       - name: key-storage
         persistentVolumeClaim:
-          claimName: key-generator-pvc
+          claimName: key-storage-pvc

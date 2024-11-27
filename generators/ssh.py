@@ -13,13 +13,13 @@ os.environ['LANG'] = 'en_US.UTF-8'
 from cryptography.hazmat.primitives.asymmetric import rsa, ec, ed25519
 from cryptography.hazmat.primitives import serialization
 
-def generate_ssh_key(key_type="rsa", key_size=2048, comment=None, passphrase=None):
+def generate_ssh_key(key_type="rsa", key_size=None, comment=None, passphrase=None):
     """
     Generate an SSH key pair.
     
     Args:
         key_type (str): Type of key to generate (rsa, ecdsa, ed25519)
-        key_size (int): Key size for RSA/ECDSA keys
+        key_size (int, optional): Key size for RSA/ECDSA keys (not used for ed25519)
         comment (str, optional): Comment to add to the key
         passphrase (str, optional): Passphrase to protect the private key
         
@@ -39,10 +39,19 @@ def generate_ssh_key(key_type="rsa", key_size=2048, comment=None, passphrase=Non
         except ValueError as e:
             return error_response(str(e))
 
-        # Validate key size based on type
+        # Set default key sizes
+        if key_size is None:
+            if key_type == 'rsa':
+                key_size = 2048
+            elif key_type == 'ecdsa':
+                key_size = 256
+            elif key_type == 'ed25519':
+                key_size = 256
+
+        # Generate key based on type
         if key_type == 'rsa':
             if key_size not in [2048, 4096]:
-                raise ValueError("RSA key size must be 2048 or 4096 bits")
+                return error_response("RSA key size must be 2048 or 4096 bits")
             
             # Generate RSA key using cryptography library
             private_key = rsa.generate_private_key(
@@ -53,7 +62,7 @@ def generate_ssh_key(key_type="rsa", key_size=2048, comment=None, passphrase=Non
         
         elif key_type == 'ecdsa':
             if key_size not in [256, 384, 521]:
-                raise ValueError("ECDSA key size must be 256, 384, or 521 bits")
+                return error_response("ECDSA key size must be 256, 384, or 521 bits")
             
             # Map ECDSA key sizes to curves
             curve_map = {
@@ -68,66 +77,44 @@ def generate_ssh_key(key_type="rsa", key_size=2048, comment=None, passphrase=Non
             key_name = f'ecdsa-sha2-nistp{key_size}'
         
         elif key_type == 'ed25519':
-            if key_size != 256:
-                raise ValueError("ED25519 only supports 256-bit keys")
-            
-            # Generate ED25519 key
+            # ED25519 has a fixed key size
             private_key = ed25519.Ed25519PrivateKey.generate()
             key_name = 'ssh-ed25519'
         
-        else:
-            raise ValueError(f"Unsupported key type: {key_type}")
+        # Serialize keys
+        encryption = serialization.BestAvailableEncryption(passphrase.encode()) if passphrase else serialization.NoEncryption()
         
-        # Serialize public key for SSH format
-        public_key_bytes = private_key.public_key().public_bytes(
+        private_key_pem = private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.OpenSSH,
+            encryption_algorithm=encryption
+        )
+        
+        public_key = private_key.public_key()
+        public_key_ssh = public_key.public_bytes(
             encoding=serialization.Encoding.OpenSSH,
             format=serialization.PublicFormat.OpenSSH
         )
-        public_key = public_key_bytes.decode('utf-8')
         
-        # Serialize private key
-        if passphrase:
-            # Encrypt private key with passphrase
-            pem_private_key = private_key.private_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PrivateFormat.PKCS8,
-                encryption_algorithm=serialization.BestAvailableEncryption(passphrase.encode('utf-8'))
-            )
-        else:
-            # Unencrypted private key
-            pem_private_key = private_key.private_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PrivateFormat.PKCS8,
-                encryption_algorithm=serialization.NoEncryption()
-            )
+        # Add comment to public key if provided
+        public_key_str = public_key_ssh.decode()
+        if comment:
+            public_key_str += f' {comment}'
         
-        # Convert private key to string
-        private_key_str = pem_private_key.decode('utf-8')
-        
-        # Return response with key details
-        return {
-            'success': True,
-            'publicKey': public_key,
-            'privateKey': private_key_str,
+        return info_response({
+            'privateKey': private_key_pem.decode(),
+            'publicKey': public_key_str,
             'keyType': key_type,
             'keySize': key_size,
-            'keyName': key_name
-        }
-    
+            'comment': comment
+        })
+        
     except Exception as e:
-        # Comprehensive error logging
-        error_details = {
-            'success': False,
-            'error_type': type(e).__name__,
-            'error_message': str(e),
-            'traceback': traceback.format_exc(),
-            'python_version': sys.version,
-            'platform': sys.platform
-        }
-        
-        # Log error details
         print("SSH Key Generation Error Details:")
-        for key, value in error_details.items():
-            print(f"{key}: {value}")
-        
-        return error_details
+        print(f"success: False")
+        print(f"error_type: {type(e).__name__}")
+        print(f"error_message: {str(e)}")
+        print(f"traceback: {traceback.format_exc()}")
+        print(f"python_version: {sys.version}")
+        print(f"platform: {sys.platform}")
+        return error_response(str(e))

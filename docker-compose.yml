@@ -5,20 +5,18 @@ services:
       dockerfile: Dockerfile
     container_name: key-generator
     ports:
-      - "5001:5001"
+      - "5000:5000"
     volumes:
       - key-storage:/app/keys
-      - gpg-home:/home/appuser/.gnupg
     environment:
       - FLASK_APP=app.py
       - FLASK_ENV=production
-      - PORT=5001
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
-      - GNUPGHOME=/home/appuser/.gnupg
-    user: "appuser"
+      - KEY_STORAGE_PATH=/app/keys
+      - GNUPGHOME=/app/keys/.gnupg
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
       timeout: 30s
       retries: 3
@@ -40,7 +38,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  gpg-home:
-    driver: local
   key-storage:
     driver: local

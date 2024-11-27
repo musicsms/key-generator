@@ -11,18 +11,27 @@ def create_output_directory(key_type, comment=''):
     Returns:
         str: Path to the created directory
     """
-    # If no comment provided, use a default name
+    # Get the base storage path from environment or use default
+    base_path = os.getenv('KEY_STORAGE_PATH', 'keys')
+    
+    # Validate key_type
+    if key_type not in ['ssh', 'rsa', 'pgp']:
+        raise ValueError("Invalid key type. Must be one of: ssh, rsa, pgp")
+    
+    # If no comment provided, use a UUID
     if not comment:
-        comment = f'default_{key_type}'
+        comment = str(uuid.uuid4())
     elif len(comment) > 40 or ' ' in comment:
         raise ValueError("Comment must be shorter than 40 characters and not contain spaces")
     
-    # Create directory path using just the comment
-    dir_path = os.path.join('keys', comment)
+    # Create directory path using key type subfolder
+    dir_path = os.path.join(base_path, key_type, comment)
     
     # Create directory if it doesn't exist
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
+    os.makedirs(dir_path, exist_ok=True)
+    
+    # Set proper permissions for the directory
+    os.chmod(dir_path, 0o700)
     
     return dir_path
 
@@ -32,40 +41,25 @@ def save_key_pair(private_key, public_key, dir_path, key_type):
     Args:
         private_key (str): Private key content
         public_key (str): Public key content
-        dir_path (str): Directory to save the keys
+        dir_path (str): Directory to save the keys in
         key_type (str): Type of key ('ssh', 'rsa', 'pgp')
+    
+    Returns:
+        tuple: (private_key_path, public_key_path)
     """
-    # Generate a unique identifier
-    unique_id = uuid.uuid4().hex[:8]
-    
-    # Define file extensions based on key type
-    extensions = {
-        'ssh': ('.pem', '.pub'),
-        'rsa': ('.pem', '.pub'),
-        'pgp': ('.pgp', '.pub.pgp')
-    }
-    
-    priv_ext, pub_ext = extensions.get(key_type, ('.key', '.pub'))
-    
     # Create unique filenames
-    base_name = f"{key_type}_{unique_id}"
-    private_name = f"{base_name}{priv_ext}"
-    public_name = f"{base_name}{pub_ext}"
-    
-    private_path = os.path.join(dir_path, private_name)
-    public_path = os.path.join(dir_path, public_name)
-    
-    # Ensure directory exists
-    os.makedirs(dir_path, exist_ok=True)
+    key_id = str(uuid.uuid4())[:8]
+    private_key_path = os.path.join(dir_path, f'{key_id}.private')
+    public_key_path = os.path.join(dir_path, f'{key_id}.public')
     
     # Save private key with restricted permissions
-    with open(private_path, 'w') as f:
-        os.chmod(private_path, 0o600)  # Set file permissions to owner read/write only
+    with open(private_key_path, 'w') as f:
         f.write(private_key)
+    os.chmod(private_key_path, 0o600)
     
     # Save public key
-    with open(public_path, 'w') as f:
-        os.chmod(public_path, 0o644)  # Set file permissions to owner read/write, others read
+    with open(public_key_path, 'w') as f:
         f.write(public_key)
+    os.chmod(public_key_path, 0o644)
     
-    return private_path, public_path
+    return private_key_path, public_key_path
