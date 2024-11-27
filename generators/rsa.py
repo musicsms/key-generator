@@ -1,31 +1,40 @@
+"""RSA key generation module."""
+
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from utils.response import info_response, error_response
 from utils.sanitize import validate_comment
+import logging
+
+logger = logging.getLogger(__name__)
 
 def generate_rsa_key(key_size=2048, comment=None, passphrase=None):
     """
     Generate an RSA key pair.
     
     Args:
-        key_size (int): Size of the key in bits (2048 or 4096)
+        key_size (int): Size of the key in bits (2048, 3072, or 4096)
         comment (str, optional): Comment to add to the key
         passphrase (str, optional): Passphrase to protect the private key
         
     Returns:
         dict: Response containing the generated keys and status
+
+    Raises:
+        ValueError: If input parameters are invalid.
+        Exception: If key generation fails.
     """
     try:
         # Validate key size
-        if key_size not in [2048, 4096]:
-            return error_response("Invalid key size. Must be 2048 or 4096 bits")
+        if key_size not in [2048, 3072, 4096]:
+            raise ValueError("Invalid key size. Must be 2048, 3072, or 4096 bits")
 
         # Validate and sanitize comment if provided
         try:
             if comment:
                 comment = validate_comment(comment)
         except ValueError as e:
-            return error_response(str(e))
+            raise ValueError(str(e))
 
         # Generate private key
         private_key = rsa.generate_private_key(
@@ -55,10 +64,15 @@ def generate_rsa_key(key_size=2048, comment=None, passphrase=None):
             format=serialization.PublicFormat.SubjectPublicKeyInfo
         )
         
+        logger.info("RSA key pair generated")
         return info_response({
             'publicKey': public_pem.decode('utf-8'),
             'privateKey': private_pem.decode('utf-8')
         })
         
+    except ValueError as e:
+        logger.error("Invalid input parameters: %s", str(e))
+        return error_response(str(e))
     except Exception as e:
+        logger.error("Failed to generate RSA key pair: %s", str(e))
         return error_response(f'Failed to generate RSA key pair: {str(e)}')

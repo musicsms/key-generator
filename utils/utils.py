@@ -1,86 +1,159 @@
+"""Utility functions for key generation application."""
+
 import os
-import stat
+import logging
 from pathlib import Path
-from utils.sanitize import sanitize_comment
+from utils.sanitize import validate_comment
 
-def secure_path_join(*paths):
-    """
-    Securely join paths, preventing directory traversal attacks.
-    """
-    # Resolve the absolute path
-    base = Path(paths[0]).resolve()
-    
-    # Join remaining paths
-    for p in paths[1:]:
-        # Remove any potential directory traversal attempts
-        clean_path = Path(p).name
-        base = base / clean_path
-    
-    return str(base)
+logger = logging.getLogger(__name__)
 
-def create_output_directory(key_type, comment=''):
-    """Create and return a directory path for storing generated keys
-    
+
+def secure_path_join(base_dir, *paths):
+    """
+    Securely join one or more path components to the base directory.
+    Prevents directory traversal attacks by ensuring the final path
+    is within the base directory.
+
     Args:
-        key_type (str): Type of key ('ssh', 'rsa', 'pgp')
-        comment (str): Optional comment for naming the directory
-    
-    Returns:
-        str: Path to the created directory
-    """
-    # Get the base storage path from environment or use default
-    base_path = os.getenv('KEY_STORAGE_PATH', 'keys')
-    
-    # Validate key_type
-    if key_type not in ['ssh', 'rsa', 'pgp']:
-        raise ValueError("Invalid key type. Must be one of: ssh, rsa, pgp")
-    
-    # If no comment provided, use a UUID
-    if not comment:
-        comment = str(uuid.uuid4())
-    elif len(comment) > 40 or ' ' in comment:
-        raise ValueError("Comment must be shorter than 40 characters and not contain spaces")
-    
-    # Sanitize the comment for safe directory creation
-    safe_comment = sanitize_comment(comment)
-    if not safe_comment:
-        raise ValueError("Invalid directory name after sanitization")
-    
-    # Create the full path securely
-    full_path = secure_path_join(base_path, key_type, safe_comment)
-    
-    # Create directory if it doesn't exist
-    os.makedirs(full_path, mode=0o700, exist_ok=True)
-    
-    # Ensure proper permissions
-    os.chmod(full_path, stat.S_IRWXU)
-    
-    return full_path
+        base_dir (str): The base directory to join paths to.
+        *paths (str): Additional path components to join.
 
-def save_key_pair(private_key, public_key, dir_path, key_type):
-    """Save key pair to files in the specified directory
-    
-    Args:
-        private_key (str): Private key content
-        public_key (str): Public key content
-        dir_path (str): Directory to save the keys in
-        key_type (str): Type of key ('ssh', 'rsa', 'pgp')
-    
     Returns:
-        tuple: (private_key_path, public_key_path)
+        str: The securely joined path.
+
+    Raises:
+        ValueError: If the resulting path is outside the base directory.
     """
-    # Create secure filenames
-    priv_file = secure_path_join(dir_path, f"{key_type}_private.key")
-    pub_file = secure_path_join(dir_path, f"{key_type}_public.key")
+    base_dir = Path(base_dir).resolve()
+    final_path = base_dir.joinpath(*paths).resolve()
+
+    if not final_path.is_relative_to(base_dir):
+        raise ValueError("Attempted directory traversal attack detected!")
+
+    return str(final_path)
+
+
+def create_output_directory(key_type, comment):
+    """
+    Create a directory to store generated keys, ensuring it is secure.
+
+    Args:
+        key_type (str): The type of key being generated (e.g., 'ssh', 'rsa').
+        comment (str): A comment to include in the directory name.
+
+    Returns:
+        str: The path to the created directory.
+    """
+    try:
+        base_path = os.getenv('KEY_STORAGE_PATH', 'keys')
+        dir_name = f"{key_type}_{validate_comment(comment)}"
+        dir_path = secure_path_join(base_path, dir_name)
+        os.makedirs(dir_path, exist_ok=True)
+        os.chmod(dir_path, 0o700)
+        return dir_path
+    except OSError as e:
+        logger.error("Failed to create output directory: %s", str(e))
+        raise
+
+
+def save_key_pair(private_key, public_key, directory, key_type):
+    """
+    Save a generated key pair to files in the specified directory with secure permissions.
+
+    Args:
+        private_key (str): The private key to save.
+        public_key (str): The public key to save.
+        directory (str): The directory to save the keys in.
+        key_type (str): The type of key being saved (e.g., 'ssh', 'rsa').
+
+    Returns:
+        tuple: Paths to the saved private and public key files.
+
+    Raises:
+        ValueError: If input parameters are invalid.
+        OSError: If file operations fail.
+    """
+    if not all([private_key, public_key, directory, key_type]):
+        raise ValueError("All parameters must be provided")
     
-    # Save private key with restricted permissions
-    with open(priv_file, 'w') as f:
-        os.chmod(priv_file, stat.S_IRUSR | stat.S_IWUSR)  # 0600
-        f.write(private_key)
-    
-    # Save public key
-    with open(pub_file, 'w') as f:
-        os.chmod(pub_file, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)  # 0644
-        f.write(public_key)
-    
-    return priv_file, pub_file
+    if not isinstance(key_type, str) or not key_type.isalnum():
+        raise ValueError("Invalid key type format")
+
+    try:
+        # Use secure_path_join to prevent directory traversal
+        private_path = secure_path_join(directory, f"{key_type}_private.pem")
+        public_path = secure_path_join(directory, f"{key_type}_public.pem")
+
+        # Secure file operations with proper permissions
+        def write_key_file(path, content, is_private=False):
+            flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+            mode = 0o600 if is_private else 0o644
+            
+            try:
+                fd = os.open(path, flags, mode)
+                with os.fdopen(fd, 'w') as f:
+                    f.write(content)
+            except OSError as e:
+                logger.error("Failed to write key file %s: %s", path, str(e))
+                raise OSError(f"Failed to write key file: {str(e)}")
+
+        write_key_file(private_path, private_key, is_private=True)
+        write_key_file(public_path, public_key, is_private=False)
+
+        logger.info("Successfully saved key pair in %s", directory)
+        return private_path, public_path
+
+    except OSError as e:
+        logger.error("Failed to save key pair: %s", str(e))
+        # Clean up any partially written files
+        for path in [private_path, public_path]:
+            try:
+                if os.path.exists(path):
+                    os.remove(path)
+            except OSError as cleanup_error:
+                logger.error("Failed to clean up file %s: %s", path, str(cleanup_error))
+        raise
+
+
+def generate_and_save_key_pair(key_type, key_size, comment, generate_func):
+    """
+    Generate and save a key pair using the specified generation function.
+
+    Args:
+        key_type (str): The type of key to generate (e.g., 'rsa', 'ssh').
+        key_size (int): The size of the key.
+        comment (str): A comment to include in the key.
+        generate_func (callable): The function to call for generating the key pair.
+
+    Returns:
+        dict: A dictionary containing the paths to the saved private and public keys.
+
+    Raises:
+        ValueError: If input parameters are invalid.
+        OSError: If key generation or saving fails.
+    """
+    try:
+        # Generate the key pair
+        result = generate_func(key_size=key_size, comment=comment)
+
+        if not result.get('success'):
+            raise ValueError('Key generation failed')
+
+        # Create directory and save keys
+        dir_path = create_output_directory(key_type, comment)
+        private_path, public_path = save_key_pair(
+            result['data']['privateKey'],
+            result['data']['publicKey'],
+            dir_path,
+            key_type
+        )
+
+        logger.info("%s key pair generated and saved in %s", key_type.upper(), dir_path)
+        return {
+            'privateKey': private_path,
+            'publicKey': public_path
+        }
+
+    except (ValueError, OSError) as e:
+        logger.error("Failed to generate and save %s key pair: %s", key_type.upper(), str(e))
+        raise
