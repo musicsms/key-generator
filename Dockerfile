@@ -1,15 +1,17 @@
 # Build stage
-FROM python:3.13-slim-bookworm AS builder
+FROM python:3.13-alpine AS builder
 
 # Set working directory
 WORKDIR /app
 
 # Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apk add --no-cache \
     gcc \
+    musl-dev \
     python3-dev \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    libffi-dev \
+    openssl-dev \
+    cargo
 
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
@@ -19,19 +21,16 @@ RUN pip install --no-cache-dir -r requirements.txt \
     && pip install --no-cache-dir gunicorn
 
 # Final stage
-FROM python:3.13-slim-bookworm
+FROM python:3.13-alpine
 
 # Create non-root user
-RUN useradd -m -r -s /bin/false appuser
+RUN adduser -D appuser
 
-# Install runtime dependencies only
-RUN apt-get update && apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends \
+# Install runtime dependencies
+RUN apk add --no-cache \
     gnupg \
     openssh-client \
     curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean \
     && mkdir -p /app/keys \
     && chown -R appuser:appuser /app
 
@@ -59,7 +58,7 @@ ENV FLASK_APP=app.py \
     PYTHONUNBUFFERED=1 \
     GNUPGHOME=/home/appuser/.gnupg
 
-# Switch to non-root user for running the application
+# Switch to non-root user
 USER appuser
 
 # Health check
