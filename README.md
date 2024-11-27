@@ -49,11 +49,36 @@ pip install -r requirements.txt
 python app.py
 ```
 
-2. Access the application at `http://localhost:5000`
+2. Access the application at `http://localhost:5001`
 
 ## Production Deployment
 
-### Using Gunicorn (Recommended)
+### Using Docker (Recommended)
+
+1. Build the Docker image:
+```bash
+docker build -t key-generator:latest .
+```
+
+2. Run with Docker:
+```bash
+docker run -d \
+  --name key-generator \
+  -p 5001:5001 \
+  -v ./keys:/app/keys \
+  key-generator:latest
+```
+
+3. Or use Docker Compose:
+```bash
+docker-compose up -d
+```
+
+The application will be available at `http://localhost:5001`
+
+For offline deployment instructions, see [docker-offline.md](docker-offline.md).
+
+### Using Gunicorn (Alternative)
 
 1. Install Gunicorn:
 ```bash
@@ -75,7 +100,7 @@ After=network.target
 User=yourusername
 WorkingDirectory=/path/to/key-generator
 Environment="PATH=/path/to/key-generator/venv/bin"
-ExecStart=/path/to/key-generator/venv/bin/gunicorn -w 4 -b 127.0.0.1:8000 app:app
+ExecStart=/path/to/key-generator/venv/bin/gunicorn -w 4 -b 127.0.0.1:5001 app:app
 
 [Install]
 WantedBy=multi-user.target
@@ -106,7 +131,7 @@ server {
     server_name your_domain.com;
 
     location / {
-        proxy_pass http://127.0.0.1:8000;
+        proxy_pass http://127.0.0.1:5001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }

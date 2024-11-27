@@ -1,11 +1,10 @@
-# Running Key Generator in Podman Offline
+# Running Key Generator in Docker Offline
 
-This guide explains how to build and run the Key Generator application using Docker/Podman in an offline environment.
+This guide explains how to build and run the Key Generator application using Docker in an offline environment.
 
 ## Prerequisites
 
-- Docker (for building the image)
-- Podman (for running the container offline)
+- Docker (for building and running the container)
 - Internet connection (only for initial build)
 - QEMU for cross-platform builds (if building on ARM64 for AMD64)
 
@@ -36,82 +35,87 @@ docker save -o key-generator.tar key-generator:latest
 
 Transfer the `key-generator.tar` file to the offline machine using any available method (USB drive, network transfer, etc.).
 
-## Step 3: Load and Run with Podman (On Offline AMD64 Machine)
+## Step 3: Load and Run with Docker (On Offline AMD64 Machine)
 
-1. Load the image into Podman:
+1. Load the image into Docker:
 ```bash
-podman load -i key-generator.tar
+docker load -i key-generator.tar
 ```
 
 2. Run the container:
 ```bash
-podman run -d \
+docker run -d \
   --name key-generator \
-  -p 5000:5000 \
-  -v key-generator-data:/app/keys \
+  -p 5001:5001 \
+  -v ./keys:/app/keys \
   key-generator:latest
 ```
 
-The application will be available at `http://localhost:5000`
+The application will be available at `http://localhost:5001`
 
 ## Container Management Commands
 
 - Stop the container:
 ```bash
-podman stop key-generator
+docker stop key-generator
 ```
 
 - Start an existing container:
 ```bash
-podman start key-generator
+docker start key-generator
 ```
 
 - Remove the container:
 ```bash
-podman rm key-generator
+docker rm key-generator
 ```
 
 - View container logs:
 ```bash
-podman logs key-generator
+docker logs key-generator
 ```
 
 ## Volume Management
 
-The container uses a named volume `key-generator-data` to persist generated keys. This volume is automatically created when you first run the container.
+The container uses a local volume `./keys` to persist generated keys. This directory will be created automatically when you first run the container.
 
 - List volumes:
 ```bash
-podman volume ls
+docker volume ls
 ```
 
 - Inspect volume:
 ```bash
-podman volume inspect key-generator-data
+docker volume inspect key-generator
 ```
 
 - Remove volume (warning: this will delete all generated keys):
 ```bash
-podman volume rm key-generator-data
+rm -rf ./keys
 ```
 
 ## Security Notes
 
 1. The container runs with minimal privileges
 2. Key storage is isolated in a dedicated volume
-3. All key directories have proper permissions (700)
-4. The application runs in production mode
+3. All connections are made through port 5001
+4. The application runs with production-grade Gunicorn server
 
-## Troubleshooting
+## Using Docker Compose
 
-1. If the container fails to start, check logs:
+You can also use Docker Compose for easier management:
+
+1. Start the application:
 ```bash
-podman logs key-generator
+docker-compose up -d
 ```
 
-2. If you need to access the container shell:
+2. Stop the application:
 ```bash
-podman exec -it key-generator /bin/bash
+docker-compose down
 ```
 
-3. If port 5000 is already in use, change the port mapping (e.g., `-p 8080:5000`)
+3. View logs:
+```bash
+docker-compose logs -f
+```

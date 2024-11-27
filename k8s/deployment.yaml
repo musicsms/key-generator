@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: key-generator
+  namespace: key-generator
+  labels:
+    app: key-generator
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: key-generator
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: key-generator
+    spec:
+      containers:
+      - name: key-generator
+        image: key-generator:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5001
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5001
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: key-storage
+          mountPath: /app/keys
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
+          fsGroup: 1000
+          allowPrivilegeEscalation: false
+      volumes:
+      - name: key-storage
+        persistentVolumeClaim:
+          claimName: key-generator-pvc

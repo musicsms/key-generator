@@ -14,21 +14,22 @@ WORKDIR /app
 COPY requirements.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir gunicorn
 
 # Copy application code
 COPY . .
 
-# Create necessary directories with correct permissions
-RUN mkdir -p /app/keys/ssh /app/keys/rsa /app/keys/gpg \
-    && chmod 700 /app/keys/ssh /app/keys/rsa /app/keys/gpg
-
-# Expose port
-EXPOSE 5000
+# Create directory for keys
+RUN mkdir -p /app/keys && chmod 700 /app/keys
 
 # Set environment variables
 ENV FLASK_APP=app.py
 ENV FLASK_ENV=production
+ENV PORT=5001
 
-# Run the application
-CMD ["python", "app.py"]
+# Expose port
+EXPOSE 5001
+
+# Run Gunicorn with 4 worker processes
+CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "4", "--timeout", "120", "app:app"]
