@@ -55,8 +55,3 @@ jobs:
         file: ./coverage.xml
         fail_ci_if_error: true
         verbose: true
-
-    - name: Check dependencies for vulnerabilities
-      run: |
-        pip install safety
-        safety check

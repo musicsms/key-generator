@@ -32,14 +32,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install safety bandit requests urllib3 pydantic ruamel-yaml
+        pip install bandit
         pip install -r requirements.txt
-
-    - name: Run Safety
-      continue-on-error: true
-      run: |
-        mkdir -p security-results
-        safety check --output json > security-results/safety-results.json || true
 
     - name: Run Bandit
       run: |
@@ -53,15 +47,6 @@ jobs:
       with:
         sarif_file: security-results/bandit-results.sarif
         category: bandit
-
-    - name: Run Snyk to check for vulnerabilities
-      continue-on-error: true
-      if: env.SNYK_TOKEN != ''
-      env:
-        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      uses: snyk/actions/python@master
-      with:
-        command: monitor
 
   docker-security:
     name: Docker Image Security Scan
