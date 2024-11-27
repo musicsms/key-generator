@@ -6,9 +6,16 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: read
+  security-events: write # Required for uploading SARIF results
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # Required for uploading SARIF results
     strategy:
       matrix:
         python-version: ["3.13"]
