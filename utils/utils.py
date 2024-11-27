@@ -1,5 +1,22 @@
 import os
-import uuid
+import stat
+from pathlib import Path
+from utils.sanitize import sanitize_comment
+
+def secure_path_join(*paths):
+    """
+    Securely join paths, preventing directory traversal attacks.
+    """
+    # Resolve the absolute path
+    base = Path(paths[0]).resolve()
+    
+    # Join remaining paths
+    for p in paths[1:]:
+        # Remove any potential directory traversal attempts
+        clean_path = Path(p).name
+        base = base / clean_path
+    
+    return str(base)
 
 def create_output_directory(key_type, comment=''):
     """Create and return a directory path for storing generated keys
@@ -24,16 +41,21 @@ def create_output_directory(key_type, comment=''):
     elif len(comment) > 40 or ' ' in comment:
         raise ValueError("Comment must be shorter than 40 characters and not contain spaces")
     
-    # Create directory path using key type subfolder
-    dir_path = os.path.join(base_path, key_type, comment)
+    # Sanitize the comment for safe directory creation
+    safe_comment = sanitize_comment(comment)
+    if not safe_comment:
+        raise ValueError("Invalid directory name after sanitization")
+    
+    # Create the full path securely
+    full_path = secure_path_join(base_path, key_type, safe_comment)
     
     # Create directory if it doesn't exist
-    os.makedirs(dir_path, exist_ok=True)
+    os.makedirs(full_path, mode=0o700, exist_ok=True)
     
-    # Set proper permissions for the directory
-    os.chmod(dir_path, 0o700)
+    # Ensure proper permissions
+    os.chmod(full_path, stat.S_IRWXU)
     
-    return dir_path
+    return full_path
 
 def save_key_pair(private_key, public_key, dir_path, key_type):
     """Save key pair to files in the specified directory
@@ -47,19 +69,18 @@ def save_key_pair(private_key, public_key, dir_path, key_type):
     Returns:
         tuple: (private_key_path, public_key_path)
     """
-    # Create unique filenames
-    key_id = str(uuid.uuid4())[:8]
-    private_key_path = os.path.join(dir_path, f'{key_id}.private')
-    public_key_path = os.path.join(dir_path, f'{key_id}.public')
+    # Create secure filenames
+    priv_file = secure_path_join(dir_path, f"{key_type}_private.key")
+    pub_file = secure_path_join(dir_path, f"{key_type}_public.key")
     
     # Save private key with restricted permissions
-    with open(private_key_path, 'w') as f:
+    with open(priv_file, 'w') as f:
+        os.chmod(priv_file, stat.S_IRUSR | stat.S_IWUSR)  # 0600
         f.write(private_key)
-    os.chmod(private_key_path, 0o600)
     
     # Save public key
-    with open(public_key_path, 'w') as f:
+    with open(pub_file, 'w') as f:
+        os.chmod(pub_file, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)  # 0644
         f.write(public_key)
-    os.chmod(public_key_path, 0o644)
     
-    return private_key_path, public_key_path
+    return priv_file, pub_file

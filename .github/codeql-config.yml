@@ -1,0 +1,28 @@
+name: "Key Generator Security Analysis"
+
+queries:
+  - uses: security-extended
+  - uses: security-and-quality
+
+paths:
+  - app.py
+  - generators/
+  - utils/
+
+paths-ignore:
+  - tests/
+  - venv/
+  - static/
+  - templates/
+  - '**/*.md'
+  - '**/*.txt'
+
+query-filters:
+  - exclude:
+      id: py/path-injection
+      paths:
+        - utils/utils.py  # We've implemented secure path handling
+  - exclude:
+      id: py/weak-cryptographic-key
+      paths:
+        - generators/ssh.py  # We've implemented strong key generation

@@ -11,9 +11,10 @@ os.environ['LC_ALL'] = 'en_US.UTF-8'
 os.environ['LANG'] = 'en_US.UTF-8'
 
 from cryptography.hazmat.primitives.asymmetric import rsa, ec, ed25519
+from cryptography.hazmat.primitives.asymmetric.ec import SECP384R1
 from cryptography.hazmat.primitives import serialization
 
-def generate_ssh_key(key_type="rsa", key_size=None, comment=None, passphrase=None):
+def generate_ssh_key(key_type="ed25519", key_size=None, comment=None, passphrase=None):
     """
     Generate an SSH key pair.
     
@@ -39,19 +40,13 @@ def generate_ssh_key(key_type="rsa", key_size=None, comment=None, passphrase=Non
         except ValueError as e:
             return error_response(str(e))
 
-        # Set default key sizes
-        if key_size is None:
-            if key_type == 'rsa':
-                key_size = 2048
-            elif key_type == 'ecdsa':
-                key_size = 256
-            elif key_type == 'ed25519':
-                key_size = 256
-
-        # Generate key based on type
+        # Set encryption algorithm if passphrase is provided
+        encryption = serialization.BestAvailableEncryption(passphrase.encode()) if passphrase else serialization.NoEncryption()
+        
         if key_type == 'rsa':
-            if key_size not in [2048, 4096]:
-                return error_response("RSA key size must be 2048 or 4096 bits")
+            # Enforce minimum RSA key size of 3072 bits
+            if not key_size or key_size < 3072:
+                key_size = 4096
             
             # Generate RSA key using cryptography library
             private_key = rsa.generate_private_key(
@@ -61,29 +56,16 @@ def generate_ssh_key(key_type="rsa", key_size=None, comment=None, passphrase=Non
             key_name = 'ssh-rsa'
         
         elif key_type == 'ecdsa':
-            if key_size not in [256, 384, 521]:
-                return error_response("ECDSA key size must be 256, 384, or 521 bits")
-            
-            # Map ECDSA key sizes to curves
-            curve_map = {
-                256: ec.SECP256R1(),
-                384: ec.SECP384R1(),
-                521: ec.SECP521R1()
-            }
-            curve = curve_map[key_size]
-            
-            # Generate ECDSA key
-            private_key = ec.generate_private_key(curve)
-            key_name = f'ecdsa-sha2-nistp{key_size}'
+            # Use SECP384R1 curve for ECDSA (NIST P-384)
+            private_key = ec.generate_private_key(SECP384R1())
+            key_name = 'ecdsa-sha2-nistp384'
         
         elif key_type == 'ed25519':
-            # ED25519 has a fixed key size
+            # Ed25519 has fixed key size and is recommended
             private_key = ed25519.Ed25519PrivateKey.generate()
             key_name = 'ssh-ed25519'
         
         # Serialize keys
-        encryption = serialization.BestAvailableEncryption(passphrase.encode()) if passphrase else serialization.NoEncryption()
-        
         private_key_pem = private_key.private_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.OpenSSH,

@@ -1,6 +1,6 @@
 from flask import Flask, request, render_template, jsonify
 import os
-import traceback
+import logging
 from generators import (
     generate_passphrase,
     generate_ssh_key,
@@ -9,14 +9,69 @@ from generators import (
 )
 from utils.utils import create_output_directory, save_key_pair
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('app.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__)
 
+# Custom error messages
+ERROR_MESSAGES = {
+    'invalid_request': 'Invalid request parameters',
+    'key_generation': 'Error generating cryptographic key',
+    'key_save': 'Error saving generated key',
+    'internal_error': 'An internal error occurred',
+    'invalid_key_type': 'Invalid key type specified',
+    'invalid_key_size': 'Invalid key size specified',
+    'invalid_comment': 'Invalid comment format'
+}
+
+def error_response(error_type, status_code=400, details=None):
+    """
+    Generate a standardized error response.
+    Never expose internal error details to the client.
+    """
+    error_message = ERROR_MESSAGES.get(error_type, ERROR_MESSAGES['internal_error'])
+    
+    if details and app.debug:
+        logger.error(f"{error_message}: {details}")
+    else:
+        logger.error(error_message)
+    
+    return jsonify({
+        'success': False,
+        'error': {
+            'type': error_type,
+            'message': error_message
+        }
+    }), status_code
+
+def success_response(data, warning=None):
+    """Generate a standardized success response."""
+    response = {
+        'success': True,
+        'data': data
+    }
+    if warning:
+        response['warning'] = warning
+    return jsonify(response)
+
 # Ensure the keys directory structure exists
-base_path = os.getenv('KEY_STORAGE_PATH', 'keys')
-for key_type in ['ssh', 'rsa', 'pgp']:
-    dir_path = os.path.join(base_path, key_type)
-    os.makedirs(dir_path, exist_ok=True)
-    os.chmod(dir_path, 0o700)
+try:
+    base_path = os.getenv('KEY_STORAGE_PATH', 'keys')
+    for key_type in ['ssh', 'rsa', 'pgp']:
+        dir_path = os.path.join(base_path, key_type)
+        os.makedirs(dir_path, exist_ok=True)
+        os.chmod(dir_path, 0o700)
+except Exception as e:
+    logger.error(f"Failed to initialize directory structure: {str(e)}")
 
 @app.route('/')
 def index():
@@ -25,232 +80,230 @@ def index():
 @app.route('/generate/passphrase', methods=['POST'])
 def passphrase():
     try:
-        data = request.json or {}
+        data = request.get_json(silent=True) or {}
+        
+        # Validate input parameters
+        try:
+            length = int(data.get('length', 16))
+            if length < 8 or length > 64:
+                return error_response('invalid_request', details='Length must be between 8 and 64')
+        except ValueError:
+            return error_response('invalid_request', details='Invalid length parameter')
+        
         result = generate_passphrase(
-            length=int(data.get('length', 16)),
+            length=length,
             include_numbers=data.get('includeNumbers', True),
             include_special=data.get('includeSpecial', True),
             exclude_chars=data.get('excludeChars', '')
         )
         
-        # Ensure a consistent JSON response
-        if result.get('success'):
-            return jsonify({
-                'success': True,
-                'data': {
-                    'passphrase': result.get('passphrase'),
-                    'length': result.get('length'),
-                    'includeNumbers': result.get('includeNumbers'),
-                    'includeSpecial': result.get('includeSpecial')
-                }
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'error_message': result.get('error_message', 'Failed to generate passphrase')
-            }), 400
-    
+        if not result.get('success'):
+            return error_response('key_generation', details=result.get('error_message'))
+        
+        return success_response({
+            'passphrase': result['passphrase'],
+            'length': length,
+            'includeNumbers': data.get('includeNumbers', True),
+            'includeSpecial': data.get('includeSpecial', True)
+        })
+        
     except Exception as e:
-        print("Passphrase Generation Error:", str(e))
-        print(traceback.format_exc())
-        return jsonify({
-            'success': False,
-            'error_message': f'Failed to generate passphrase: {str(e)}'
-        }), 400
+        logger.error(f"Passphrase generation failed: {str(e)}")
+        return error_response('internal_error', 500)
 
 @app.route('/generate/ssh', methods=['POST'])
 def ssh():
     try:
-        data = request.json or {}
+        data = request.get_json(silent=True) or {}
         comment = data.get('comment', '').strip()
         
-        # Get key_size if provided, otherwise let generator use default
+        # Validate key_size
         key_size = data.get('keySize')
         if key_size is not None:
-            key_size = int(key_size)
+            try:
+                key_size = int(key_size)
+            except ValueError:
+                return error_response('invalid_key_size')
         
         # Generate the SSH key pair
         result = generate_ssh_key(
-            key_type=data.get('keyType', 'rsa'),
+            key_type=data.get('keyType', 'ed25519'),
             key_size=key_size,
             comment=comment,
             passphrase=data.get('passphrase', '')
         )
         
-        if not isinstance(result, dict):
-            return jsonify({
-                'success': False,
-                'error_message': str(result)
-            }), 400
+        if not result.get('success'):
+            return error_response('key_generation', details=result.get('error_message'))
+        
+        try:
+            # Create directory and save keys
+            dir_path = create_output_directory('ssh', comment)
+            private_path, public_path = save_key_pair(
+                result['data']['privateKey'],
+                result['data']['publicKey'],
+                dir_path,
+                'ssh'
+            )
             
-        if result.get('success'):
-            try:
-                # Create directory and save keys
-                dir_path = create_output_directory('ssh', comment)
-                private_path, public_path = save_key_pair(
-                    result['data']['privateKey'],
-                    result['data']['publicKey'],
-                    dir_path,
-                    'ssh'
-                )
-                
-                return jsonify({
-                    'success': True,
-                    'data': {
-                        'privateKey': result['data']['privateKey'],
-                        'publicKey': result['data']['publicKey'],
-                        'keyType': result['data']['keyType'],
-                        'keySize': result['data']['keySize'],
-                        'directory': dir_path,
-                        'privatePath': private_path,
-                        'publicPath': public_path
-                    }
-                })
-            except Exception as e:
-                # If saving fails, still return the keys but with a warning
-                return jsonify({
-                    'success': True,
-                    'warning': f'Keys generated but could not be saved: {str(e)}',
-                    'data': {
-                        'privateKey': result['data']['privateKey'],
-                        'publicKey': result['data']['publicKey'],
-                        'keyType': result['data']['keyType'],
-                        'keySize': result['data']['keySize']
-                    }
-                })
-        else:
-            return jsonify({
-                'success': False,
-                'error_message': result.get('error_message', 'Failed to generate SSH key')
-            }), 400
+            return success_response({
+                'privateKey': result['data']['privateKey'],
+                'publicKey': result['data']['publicKey'],
+                'keyType': result['data']['keyType'],
+                'keySize': result['data']['keySize'],
+                'directory': dir_path,
+                'privatePath': private_path,
+                'publicPath': public_path
+            })
             
-    except ValueError as ve:
-        return jsonify({
-            'success': False,
-            'error_message': str(ve)
-        }), 400
+        except Exception as e:
+            logger.error(f"Failed to save SSH key: {str(e)}")
+            return success_response({
+                'privateKey': result['data']['privateKey'],
+                'publicKey': result['data']['publicKey'],
+                'keyType': result['data']['keyType'],
+                'keySize': result['data']['keySize']
+            }, warning='Keys generated but could not be saved')
+            
     except Exception as e:
-        print("SSH Key Generation Error:", str(e))
-        print(traceback.format_exc())
-        return jsonify({
-            'success': False,
-            'error_message': f'Failed to generate SSH key: {str(e)}'
-        }), 500
+        logger.error(f"SSH key generation failed: {str(e)}")
+        return error_response('internal_error', 500)
 
 @app.route('/generate/rsa', methods=['POST'])
 def rsa():
     try:
-        data = request.json or {}
+        data = request.get_json(silent=True) or {}
         comment = data.get('comment', '').strip()
+        
+        try:
+            key_size = int(data.get('keySize', 4096))
+            if key_size not in [3072, 4096]:
+                return error_response('invalid_key_size', details='RSA key size must be 3072 or 4096 bits')
+        except ValueError:
+            return error_response('invalid_key_size')
         
         # Generate the RSA key pair
         result = generate_rsa_key(
-            key_size=int(data.get('keySize', 2048)),
+            key_size=key_size,
             passphrase=data.get('passphrase', '')
         )
         
-        if result.get('success'):
-            try:
-                # Create directory and save keys
-                dir_path = create_output_directory('rsa', comment)
-                private_path, public_path = save_key_pair(
-                    result['data']['privateKey'],
-                    result['data']['publicKey'],
-                    dir_path,
-                    'rsa'
-                )
-                
-                return jsonify({
-                    'success': True,
-                    'data': {
-                        'privateKey': result['data']['privateKey'],
-                        'publicKey': result['data']['publicKey'],
-                        'keySize': data.get('keySize', 2048),
-                        'directory': dir_path,
-                        'privatePath': private_path,
-                        'publicPath': public_path
-                    }
-                })
-            except Exception as e:
-                # If saving fails, still return the keys but with a warning
-                return jsonify({
-                    'success': True,
-                    'warning': f'Keys generated but could not be saved: {str(e)}',
-                    'data': {
-                        'privateKey': result['data']['privateKey'],
-                        'publicKey': result['data']['publicKey'],
-                        'keySize': data.get('keySize', 2048)
-                    }
-                })
-        else:
-            return jsonify({
-                'success': False,
-                'error_message': result.get('error_message', 'Failed to generate RSA key')
-            }), 400
+        if not result.get('success'):
+            return error_response('key_generation', details=result.get('error_message'))
+        
+        try:
+            # Create directory and save keys
+            dir_path = create_output_directory('rsa', comment)
+            private_path, public_path = save_key_pair(
+                result['data']['privateKey'],
+                result['data']['publicKey'],
+                dir_path,
+                'rsa'
+            )
             
-    except ValueError as ve:
-        return jsonify({
-            'success': False,
-            'error_message': str(ve)
-        }), 400
+            return success_response({
+                'privateKey': result['data']['privateKey'],
+                'publicKey': result['data']['publicKey'],
+                'keySize': key_size,
+                'directory': dir_path,
+                'privatePath': private_path,
+                'publicPath': public_path
+            })
+            
+        except Exception as e:
+            logger.error(f"Failed to save RSA key: {str(e)}")
+            return success_response({
+                'privateKey': result['data']['privateKey'],
+                'publicKey': result['data']['publicKey'],
+                'keySize': key_size
+            }, warning='Keys generated but could not be saved')
+            
     except Exception as e:
-        print("RSA Key Generation Error:", str(e))
-        print(traceback.format_exc())
-        return jsonify({
-            'success': False,
-            'error_message': 'Internal server error'
-        }), 500
+        logger.error(f"RSA key generation failed: {str(e)}")
+        return error_response('internal_error', 500)
 
 @app.route('/generate/pgp', methods=['POST'])
 def pgp():
     try:
-        data = request.json or {}
+        data = request.get_json(silent=True) or {}
         
-        # Required parameters
-        name = data.get('name')
-        email = data.get('email')
+        name = data.get('name', '').strip()
+        email = data.get('email', '').strip()
+        comment = data.get('comment', '').strip()
         
         if not name or not email:
-            return jsonify({
-                'success': False,
-                'error_message': 'Name and email are required'
-            }), 400
-
-        # Optional parameters
-        comment = data.get('comment')
-        key_type = data.get('keyType', 'RSA')
-        key_length = data.get('keyLength')  # Optional for RSA
-        curve = data.get('curve')  # Optional for ECC
-        passphrase = data.get('passphrase')
-        expire_time = data.get('expireTime', '2y')
-
+            return error_response('invalid_request', details='Name and email are required')
+        
         result = generate_pgp_key(
             name=name,
             email=email,
             comment=comment,
-            key_type=key_type,
-            key_length=key_length,
-            curve=curve,
-            passphrase=passphrase,
-            expire_time=expire_time
+            passphrase=data.get('passphrase', '')
         )
-
-        if result.get('success'):
-            return jsonify(result)
-        else:
-            return jsonify(result), 400
-
+        
+        if not result.get('success'):
+            return error_response('key_generation', details=result.get('error_message'))
+        
+        try:
+            # Create directory and save keys
+            dir_path = create_output_directory('pgp', comment)
+            private_path, public_path = save_key_pair(
+                result['data']['privateKey'],
+                result['data']['publicKey'],
+                dir_path,
+                'pgp'
+            )
+            
+            return success_response({
+                'privateKey': result['data']['privateKey'],
+                'publicKey': result['data']['publicKey'],
+                'keyId': result['data']['keyId'],
+                'directory': dir_path,
+                'privatePath': private_path,
+                'publicPath': public_path
+            })
+            
+        except Exception as e:
+            logger.error(f"Failed to save PGP key: {str(e)}")
+            return success_response({
+                'privateKey': result['data']['privateKey'],
+                'publicKey': result['data']['publicKey'],
+                'keyId': result['data']['keyId']
+            }, warning='Keys generated but could not be saved')
+            
     except Exception as e:
-        print("PGP Key Generation Error:", str(e))
-        traceback.print_exc()
-        return jsonify({
-            'success': False,
-            'error_message': f'Failed to generate PGP key: {str(e)}'
-        }), 500
+        logger.error(f"PGP key generation failed: {str(e)}")
+        return error_response('internal_error', 500)
 
 @app.route('/health')
 def health_check():
     return jsonify({"status": "healthy"}), 200
 
+# Security headers
+@app.after_request
+def add_security_headers(response):
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    return response
+
+@app.errorhandler(Exception)
+def handle_error(error):
+    """Handle all unhandled exceptions without exposing internal details"""
+    logger.error(f"Unhandled error: {str(error)}")
+    return error_response('internal_error', 500)
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    # Ensure we're not in debug mode in production
+    debug_mode = os.environ.get('FLASK_ENV') == 'development'
+    port = int(os.environ.get('PORT', 5000))
+    
+    # Configure logging
+    logging.basicConfig(
+        level=logging.DEBUG if debug_mode else logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    app.run(host='0.0.0.0', port=port, debug=debug_mode)
