@@ -63,5 +63,18 @@ jobs:
       - name: Validate Docker image
         run: |
           docker images
-          docker run --rm ${{ env.IMAGE_NAME }}:test python --version
-          docker run --rm ${{ env.IMAGE_NAME }}:test pip list
+          # Use the first tag from the metadata action
+          IMAGE_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n 1)
+          echo "Validating image: $IMAGE_TAG"
+          docker run --rm "$IMAGE_TAG" python --version
+          docker run --rm "$IMAGE_TAG" pip list
+          docker run --rm "$IMAGE_TAG" pip check
+
+      # Commented out Docker Scout step due to authentication issues
+      # - name: Docker Scout CVE Scan
+      #   uses: docker/scout-action@v1
+      #   with:
+      #     command: cves
+      #     image: '${{ env.IMAGE_NAME }}:test'
+      #     only-severities: critical,high
+      #     exit-code: true
