@@ -1,11 +1,11 @@
-import re
-import gnupg
 import os
-import sys
-import subprocess
+import gnupg
 from datetime import datetime, timedelta
+import re
 from utils.response import info_response, error_response
 from utils.sanitize import validate_comment
+from utils.utils import create_output_directory, save_key_pair
+from subprocess import run, CalledProcessError
 
 # Key type configurations
 KEY_TYPES = {
@@ -22,18 +22,10 @@ KEY_TYPES = {
 }
 
 def _calculate_expire_date(expire_time):
-    """
-    Calculate expiration date based on input string.
-    
-    Args:
-        expire_time (str): Time string like '1y', '2y', 'never'
-        
-    Returns:
-        str: Expiration date in format '2025-12-31' or '0' for never
-    """
-    if not expire_time or expire_time.lower() == 'never':
+    """Calculate expiration date from input string"""
+    if expire_time.lower() == 'never':
         return '0'
-        
+    
     try:
         years = int(expire_time.lower().rstrip('y'))
         if years <= 0:
@@ -53,7 +45,7 @@ def _check_gpg_installation():
     """
     try:
         # Try to run gpg --version
-        if sys.platform == 'win32':
+        if os.sys.platform == 'win32':
             # Check common Windows GPG installation paths
             gpg_paths = [
                 os.path.join(os.environ.get('ProgramFiles', ''), 'GnuPG', 'bin', 'gpg.exe'),
@@ -63,12 +55,12 @@ def _check_gpg_installation():
             
             for path in gpg_paths:
                 try:
-                    subprocess.run([path, '--version'], 
-                                capture_output=True, 
-                                text=True, 
-                                check=True)
+                    run([path, '--version'], 
+                        capture_output=True, 
+                        text=True, 
+                        check=True)
                     return True, None
-                except (subprocess.CalledProcessError, FileNotFoundError):
+                except (CalledProcessError, FileNotFoundError):
                     continue
                     
             return False, (
@@ -80,12 +72,12 @@ def _check_gpg_installation():
             )
         else:
             # Unix-like systems
-            subprocess.run(['gpg', '--version'], 
-                         capture_output=True, 
-                         text=True, 
-                         check=True)
+            run(['gpg', '--version'], 
+                capture_output=True, 
+                text=True, 
+                check=True)
             return True, None
-    except subprocess.CalledProcessError as e:
+    except CalledProcessError as e:
         return False, f"GPG error: {e.stderr}"
     except FileNotFoundError:
         return False, (
@@ -207,19 +199,16 @@ def generate_pgp_key(name, email, comment=None, key_type="RSA", key_length=None,
             passphrase=passphrase
         )
 
-        # Create a directory for the key
-        key_dir = os.path.join('keys', f"pgp_{email.replace('@', '_at_')}")
-        os.makedirs(key_dir, exist_ok=True)
+        # Create a directory for the key using create_output_directory
+        key_dir = create_output_directory('pgp', comment or email.replace('@', '_at_'))
 
-        # Save keys to files
-        public_key_path = os.path.join(key_dir, 'public.asc')
-        private_key_path = os.path.join(key_dir, 'private.asc')
-
-        with open(public_key_path, 'w') as f:
-            f.write(ascii_armored_public_key)
-        
-        with open(private_key_path, 'w') as f:
-            f.write(ascii_armored_private_key)
+        # Save keys using save_key_pair
+        private_path, public_path = save_key_pair(
+            ascii_armored_private_key,
+            ascii_armored_public_key,
+            key_dir,
+            'pgp'
+        )
 
         # Prepare response data
         response_data = {
@@ -228,6 +217,8 @@ def generate_pgp_key(name, email, comment=None, key_type="RSA", key_length=None,
             'keyId': str(key),
             'keyType': key_type,
             'directory': key_dir,
+            'privatePath': private_path,
+            'publicPath': public_path,
             'expireDate': expire_date if expire_date != '0' else 'never'
         }
 

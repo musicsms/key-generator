@@ -72,7 +72,7 @@ def ssh():
             try:
                 # Create directory and save keys
                 dir_path = create_output_directory('ssh', comment)
-                save_key_pair(
+                private_path, public_path = save_key_pair(
                     result['privateKey'],
                     result['publicKey'],
                     dir_path,
@@ -86,7 +86,9 @@ def ssh():
                         'publicKey': result['publicKey'],
                         'keyType': result['keyType'],
                         'keySize': result['keySize'],
-                        'directory': dir_path
+                        'directory': dir_path,
+                        'privatePath': private_path,
+                        'publicPath': public_path
                     }
                 })
             except Exception as e:
@@ -136,7 +138,7 @@ def rsa():
             try:
                 # Create directory and save keys
                 dir_path = create_output_directory('rsa', comment)
-                save_key_pair(
+                private_path, public_path = save_key_pair(
                     result['data']['privateKey'],
                     result['data']['publicKey'],
                     dir_path,
@@ -149,7 +151,9 @@ def rsa():
                         'privateKey': result['data']['privateKey'],
                         'publicKey': result['data']['publicKey'],
                         'keySize': data.get('keySize', 2048),
-                        'directory': dir_path
+                        'directory': dir_path,
+                        'privatePath': private_path,
+                        'publicPath': public_path
                     }
                 })
             except Exception as e:

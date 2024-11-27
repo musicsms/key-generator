@@ -104,18 +104,6 @@ def generate_ssh_key(key_type="rsa", key_size=2048, comment=None, passphrase=Non
         # Convert private key to string
         private_key_str = pem_private_key.decode('utf-8')
         
-        # Determine file paths with explicit encoding
-        keys_dir = os.path.join(os.getcwd(), 'keys')
-        os.makedirs(keys_dir, exist_ok=True)
-        
-        # Generate a unique filename
-        unique_filename = f'id_{key_type}_{uuid.uuid4().hex[:8]}'
-        private_key_path = os.path.join(keys_dir, unique_filename)
-        
-        # Write private key to file with explicit encoding
-        with open(private_key_path, 'wb') as f:
-            f.write(pem_private_key)
-        
         # Return response with key details
         return {
             'success': True,
@@ -123,8 +111,7 @@ def generate_ssh_key(key_type="rsa", key_size=2048, comment=None, passphrase=Non
             'privateKey': private_key_str,
             'keyType': key_type,
             'keySize': key_size,
-            'keyName': key_name,
-            'keyPath': private_key_path
+            'keyName': key_name
         }
     
     except Exception as e:
