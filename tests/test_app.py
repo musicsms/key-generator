@@ -72,19 +72,25 @@ def test_generate_rsa_key(client, key_size):
 def test_invalid_ssh_key_type(client):
     """Test error handling for invalid SSH key type"""
     data = {
-        'key_type': 'invalid',
+        'keyType': 'invalid',
         'comment': 'test@example.com'
     }
     response = client.post('/generate/ssh', json=data)
     assert response.status_code == 400
-    assert 'error' in response.json
+    result = response.json
+    assert 'success' in result
+    assert result['success'] == False
+    assert 'error_message' in result
 
 def test_invalid_rsa_key_size(client):
     """Test error handling for invalid RSA key size"""
     data = {
-        'key_size': 1024,  # Too small
+        'keySize': 1024,  # Too small
         'passphrase': 'test123'
     }
     response = client.post('/generate/rsa', json=data)
     assert response.status_code == 400
-    assert 'error' in response.json
+    result = response.json
+    assert 'success' in result
+    assert result['success'] == False
+    assert 'error_message' in result
