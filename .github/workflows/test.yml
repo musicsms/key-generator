@@ -69,10 +69,16 @@ jobs:
 
     - name: Run Bandit
       run: |
-        pip install bandit
+        pip install bandit-sarif bandit
         bandit -r . -f sarif -o bandit-results.sarif || true
+        # Ensure the file exists and has proper permissions
+        if [ -f bandit-results.sarif ]; then
+          chmod 644 bandit-results.sarif
+        fi
 
     - name: Upload Bandit scan results
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()  # Run even if Bandit finds issues
       with:
         sarif_file: bandit-results.sarif
+        category: bandit
