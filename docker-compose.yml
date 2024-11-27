@@ -8,14 +8,14 @@ services:
       - "5001:5001"
     volumes:
       - ./keys:/app/keys
-      - gpg-home:/root/.gnupg
+      - gpg-home:/home/appuser/.gnupg
     environment:
       - FLASK_APP=app.py
       - FLASK_ENV=production
       - PORT=5001
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
-      - GNUPGHOME=/root/.gnupg
+      - GNUPGHOME=/home/appuser/.gnupg
     user: "appuser"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5001/health"]

@@ -21,7 +21,7 @@ RUN pip install --no-cache-dir -r requirements.txt \
 FROM python:3.9-slim
 
 # Create non-root user
-RUN useradd -r -s /bin/false appuser
+RUN useradd -m -r -s /bin/false appuser
 
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -43,9 +43,9 @@ COPY --from=builder /usr/local/bin/gunicorn /usr/local/bin/gunicorn
 COPY --chown=appuser:appuser . .
 
 # Set proper permissions for keys directory and gnupg home
-RUN mkdir -p /root/.gnupg && \
-    chmod 700 /root/.gnupg && \
-    chown -R appuser:appuser /app/keys && \
+RUN mkdir -p /home/appuser/.gnupg && \
+    chmod 700 /home/appuser/.gnupg && \
+    chown -R appuser:appuser /home/appuser/.gnupg /app/keys && \
     chmod -R 700 /app/keys
 
 # Set environment variables
@@ -54,7 +54,7 @@ ENV FLASK_APP=app.py \
     PORT=5001 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    GNUPGHOME=/root/.gnupg
+    GNUPGHOME=/home/appuser/.gnupg
 
 # Switch to non-root user for running the application
 USER appuser
