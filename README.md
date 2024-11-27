@@ -128,6 +128,19 @@ python app.py
 6. Review Snyk security reports
 7. Enable Docker content trust
 
+### Security Scanning
+
+The project includes multiple security scanning tools:
+- Docker Scout (built into CI pipeline)
+- Bandit (static code analysis)
+- Snyk vulnerability scanning (optional - requires `SNYK_TOKEN` in GitHub secrets)
+- GitHub CodeQL
+
+To enable Snyk scanning:
+1. Create a Snyk account at https://snyk.io
+2. Generate a Snyk API token
+3. Add the token as `SNYK_TOKEN` in your GitHub repository secrets
+
 ### Health Monitoring
 
 The application provides a health check endpoint at `/health` that returns:
