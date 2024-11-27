@@ -8,12 +8,14 @@ services:
       - "5001:5001"
     volumes:
       - ./keys:/app/keys
+      - gpg-home:/root/.gnupg
     environment:
       - FLASK_APP=app.py
       - FLASK_ENV=production
       - PORT=5001
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
+      - GNUPGHOME=/root/.gnupg
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
       interval: 30s
@@ -30,8 +32,11 @@ services:
           memory: 256M
     security_opt:
       - no-new-privileges:true
-    read_only: true
+    read_only: false
     tmpfs:
       - /tmp
       - /var/run
     restart: unless-stopped
+
+volumes:
+  gpg-home:
