@@ -1,6 +1,8 @@
 services:
   key-generator:
-    image: key-generator:1.0.2
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: key-generator
     ports:
       - "5001:5001"
