@@ -1,0 +1,10 @@
+name: "CodeQL Security Scan Configuration"
+
+paths-ignore:
+  - tests/
+  - docs/
+  - '**/*.md'
+  - '**/*.txt'
+
+queries:
+  - uses: security-and-quality

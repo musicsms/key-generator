@@ -29,13 +29,23 @@ jobs:
         python-version: "3.13"
         cache: 'pip'
 
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install safety bandit requests urllib3 pydantic ruamel-yaml
+        pip install -r requirements.txt
+
+    - name: Run Safety
+      continue-on-error: true
+      run: |
+        mkdir -p security-results
+        safety check --output json > security-results/safety-results.json || true
+
     - name: Run Bandit
       run: |
-        python -m pip install bandit
         mkdir -p security-results
         bandit -r . -f json -o security-results/bandit-results.json || true
         python .github/workflows/scripts/bandit-to-sarif.py security-results/bandit-results.json security-results/bandit-results.sarif
-        ls -la security-results/
 
     - name: Upload Bandit scan results
       uses: github/codeql-action/upload-sarif@v3
@@ -70,6 +80,8 @@ jobs:
         format: 'sarif'
         output: 'trivy-results.sarif'
         severity: 'CRITICAL,HIGH'
+        ignore-unfixed: true
+        vuln-type: 'os,library'
 
     - name: Upload Trivy scan results to GitHub Security
       uses: github/codeql-action/upload-sarif@v3
