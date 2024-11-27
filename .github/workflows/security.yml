@@ -8,35 +8,26 @@ on:
   schedule:
     - cron: '0 0 * * 0'  # Run weekly at midnight on Sunday
 
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/key-generator
+
 permissions:
   contents: read
   security-events: write
 
 jobs:
-  security:
-    name: Security Checks
+  python-security:
+    name: Python Security Checks
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: "3.13"
         cache: 'pip'
-
-    - name: Run Snyk to check for vulnerabilities
-      continue-on-error: true
-      if: env.SNYK_TOKEN != ''
-      env:
-        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      uses: snyk/actions/python@master
-      with:
-        command: monitor
 
     - name: Run Bandit
       run: |
@@ -52,3 +43,61 @@ jobs:
       with:
         sarif_file: security-results/bandit-results.sarif
         category: bandit
+
+    - name: Run Snyk to check for vulnerabilities
+      continue-on-error: true
+      if: env.SNYK_TOKEN != ''
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      uses: snyk/actions/python@master
+      with:
+        command: monitor
+
+  docker-security:
+    name: Docker Image Security Scan
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Build Docker image
+      run: docker build -t ${{ env.IMAGE_NAME }}:test .
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@0.19.0
+      with:
+        image-ref: '${{ env.IMAGE_NAME }}:test'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH'
+
+    - name: Upload Trivy scan results to GitHub Security
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+    - name: Docker Scout CVE Scan
+      uses: docker/scout-action@v1
+      with:
+        command: cves
+        image: '${{ env.IMAGE_NAME }}:test'
+        only-severities: critical,high
+        exit-code: true
+
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: 'python'
+        
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:python"
