@@ -2,6 +2,30 @@
 
 A secure web-based tool for generating various types of cryptographic key pairs with custom comments and organized storage.
 
+[![Docker Build](https://github.com/musicsms/key-generator/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/musicsms/key-generator/actions/workflows/docker-publish.yml)
+[![Tests](https://github.com/musicsms/key-generator/actions/workflows/test.yml/badge.svg)](https://github.com/musicsms/key-generator/actions/workflows/test.yml)
+[![Docker Scout](https://img.shields.io/badge/docker%20scout-monitored-blue)](https://scout.docker.com/image/docker.io/musicsms/key-generator)
+[![Python Version](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/)
+
+## Security Status
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| Base Image | Clean | python:3.13-slim-bookworm |
+| Dependencies | Monitored | Continuously scanned by Snyk |
+| Code Quality | Analyzed | Bandit security checks |
+| Container | Secured | Non-root user, minimal permissions |
+| Updates | Automated | Weekly security patches |
+
+Security Features:
+- Non-root container execution
+- Regular dependency updates
+- Multi-stage builds to minimize attack surface
+- Automated vulnerability scanning
+- Security patches through Docker Scout
+- Static code analysis with Bandit
+- Runtime security monitoring
+
 ## Features
 
 - Generate multiple types of cryptographic keys:
@@ -15,7 +39,7 @@ A secure web-based tool for generating various types of cryptographic key pairs 
 
 ## Prerequisites
 
-1. Python 3.8 or higher
+1. Python 3.13 or higher
 2. pip (Python package manager)
 3. virtualenv (recommended)
 4. GnuPG (GPG) installation:

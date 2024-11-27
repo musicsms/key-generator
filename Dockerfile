@@ -1,5 +1,5 @@
 # Build stage
-FROM python:3.9-slim-bookworm AS builder
+FROM python:3.13-slim-bookworm AS builder
 
 # Set working directory
 WORKDIR /app
@@ -19,7 +19,7 @@ RUN pip install --no-cache-dir -r requirements.txt \
     && pip install --no-cache-dir gunicorn
 
 # Final stage
-FROM python:3.9-slim-bookworm
+FROM python:3.13-slim-bookworm
 
 # Create non-root user
 RUN useradd -m -r -s /bin/false appuser
@@ -39,7 +39,7 @@ RUN apt-get update && apt-get upgrade -y && \
 WORKDIR /app
 
 # Copy dependencies from builder
-COPY --from=builder /usr/local/lib/python3.9/site-packages/ /usr/local/lib/python3.9/site-packages/
+COPY --from=builder /usr/local/lib/python3.13/site-packages/ /usr/local/lib/python3.13/site-packages/
 COPY --from=builder /usr/local/bin/gunicorn /usr/local/bin/gunicorn
 
 # Copy application code
