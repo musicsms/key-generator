@@ -7,13 +7,13 @@ Jinja2>=3.1.3,<3.2.0
 MarkupSafe>=2.1.5,<2.2.0
 
 # Cryptography and Security
-cryptography>=43.0.1,<44.0.0  # Updated to fixed version addressing GHSA-h4gh-qq45-vh27
+cryptography==43.0.1
 pyOpenSSL>=24.0.0,<25.0.0
 cffi>=1.16.0,<2.0.0
 pycparser>=2.21,<3.0.0
-pyca-cryptography-manylinux>=43.0.1
-certifi>=2024.2.2  # Updated root certificates
-pyopenssl-security-extra>=0.1.0  # Additional OpenSSL security checks
+python-jose[cryptography]>=3.3.0,<4.0.0  # JWT security
+safety>=3.0.0  # Dependency vulnerability scanner
+bandit>=1.7.8  # Security linter
 
 # Key Generation and SSH
 python-gnupg>=0.5.2,<0.6.0
@@ -22,6 +22,11 @@ paramiko>=3.4.0,<3.5.0
 # WSGI Server
 gunicorn>=22.0.0,<23.0.0
 
-# Optional: Additional Security Libraries
-python-jose[cryptography]>=3.3.0,<4.0.0  # JWT security
+# Additional Security
+certifi>=2024.2.2
+pyopenssl>=24.0.0
 cryptography-fips>=0.1.0,<0.2.0  # FIPS compliance support
+python-dotenv>=1.0.1  # Secure environment variable management
+
+# Logging and Monitoring
+structlog>=24.1.0  # Structured logging

@@ -27,8 +27,10 @@ RUN pip install --no-cache-dir \
     --prefer-binary \
     --no-warn-script-location \
     -r requirements.txt \
-    && pip check \
-    && pip freeze | grep cryptography
+    && pip check
+
+# Verify cryptography installation
+RUN pip show cryptography
 
 # Final stage
 FROM python:3.13-alpine
@@ -61,7 +63,10 @@ COPY --chown=appuser:appuser . .
 RUN mkdir -p /home/appuser/.gnupg && \
     chmod 700 /home/appuser/.gnupg && \
     chown -R appuser:appuser /home/appuser/.gnupg /app/keys && \
-    chmod -R 700 /app/keys
+    chmod -R 700 /app/keys && \
+    # Remove unnecessary files and set restrictive permissions
+    find /app -type f -exec chmod 640 {} \; && \
+    find /app -type d -exec chmod 750 {} \;
 
 # Switch to non-root user
 USER appuser
@@ -89,4 +94,6 @@ CMD ["gunicorn", \
      "--limit-request-line", "4094", \
      "--limit-request-fields", "100", \
      "--limit-request-field-size", "8190", \
+     "--worker-tmp-dir", "/dev/shm", \
+     "--secure-scheme-headers", "{'X-FORWARDED-PROTO': 'https'}", \
      "app:app"]
