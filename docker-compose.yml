@@ -1,12 +1,35 @@
-version: '3.8'
-
 services:
   key-generator:
-    image: key-generator:latest
+    image: key-generator:1.0.2
     container_name: key-generator
     ports:
       - "5001:5001"
     volumes:
       - ./keys:/app/keys
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=production
+      - PORT=5001
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run
     restart: unless-stopped
-
