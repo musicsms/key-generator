@@ -2,8 +2,15 @@
 
 A secure web-based tool for generating various types of cryptographic key pairs with custom comments and organized storage.
 
-[![Docker Build](https://github.com/musicsms/key-generator/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/musicsms/key-generator/actions/workflows/docker-publish.yml)
-[![Tests](https://github.com/musicsms/key-generator/actions/workflows/test.yml/badge.svg)](https://github.com/musicsms/key-generator/actions/workflows/test.yml)
+## CI/CD Status
+
+### Functional Tests
+[![Function Tests](https://github.com/musicsms/key-generator/actions/workflows/test.yml/badge.svg)](https://github.com/musicsms/key-generator/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/musicsms/key-generator/branch/main/graph/badge.svg)](https://codecov.io/gh/musicsms/key-generator)
+
+### Security Status
+[![Security Scan](https://github.com/musicsms/key-generator/actions/workflows/security.yml/badge.svg)](https://github.com/musicsms/key-generator/actions/workflows/security.yml)
+[![Known Vulnerabilities](https://snyk.io/test/github/musicsms/key-generator/badge.svg)](https://snyk.io/test/github/musicsms/key-generator)
 [![Docker Scout](https://img.shields.io/badge/docker%20scout-monitored-blue)](https://scout.docker.com/image/docker.io/musicsms/key-generator)
 [![Python Version](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/)
 
@@ -39,6 +46,32 @@ Security Features:
 - Docker multi-arch support (AMD64/ARM64)
 - Health check endpoints
 - Comprehensive test coverage
+
+## Testing
+
+### Functional Testing
+The project includes comprehensive test coverage:
+- Unit tests for all key generation functions
+- Integration tests for API endpoints
+- Environment and configuration tests
+- Error handling and edge cases
+
+Run tests locally:
+```bash
+pytest tests/ -v --cov=./ --cov-report=term-missing
+```
+
+### Security Testing
+Security scanning is performed automatically:
+- Snyk vulnerability scanning (requires `SNYK_TOKEN`)
+- Bandit static code analysis
+- GitHub CodeQL analysis
+- Weekly scheduled security scans
+
+To enable Snyk scanning:
+1. Create a Snyk account at https://snyk.io
+2. Generate a Snyk API token
+3. Add the token as `SNYK_TOKEN` in your GitHub repository secrets
 
 ## Prerequisites
 
@@ -127,19 +160,6 @@ python app.py
 5. Monitor security scans in Docker Scout
 6. Review Snyk security reports
 7. Enable Docker content trust
-
-### Security Scanning
-
-The project includes multiple security scanning tools:
-- Docker Scout (built into CI pipeline)
-- Bandit (static code analysis)
-- Snyk vulnerability scanning (optional - requires `SNYK_TOKEN` in GitHub secrets)
-- GitHub CodeQL
-
-To enable Snyk scanning:
-1. Create a Snyk account at https://snyk.io
-2. Generate a Snyk API token
-3. Add the token as `SNYK_TOKEN` in your GitHub repository secrets
 
 ### Health Monitoring
 

@@ -1,4 +1,4 @@
-name: Test and Security Check
+name: Function Tests
 
 on:
   push:
@@ -6,27 +6,17 @@ on:
   pull_request:
     branches: [ "main" ]
 
-permissions:
-  contents: read
-  security-events: write # Required for uploading SARIF results
-
 jobs:
   test:
+    name: Run Tests
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write # Required for uploading SARIF results
-    strategy:
-      matrix:
-        python-version: ["3.13"]
-
     steps:
     - uses: actions/checkout@v3
     
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: "3.13"
         cache: 'pip'
     
     - name: Install system dependencies
@@ -59,36 +49,3 @@ jobs:
       with:
         file: ./coverage.xml
         fail_ci_if_error: true
-
-  security:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Run Snyk to check for vulnerabilities
-      uses: snyk/actions/python@master
-      continue-on-error: true
-      if: env.SNYK_TOKEN != ''
-      env:
-        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      with:
-        command: monitor
-
-    - name: Run Bandit
-      run: |
-        python -m pip install bandit
-        # Create results directory
-        mkdir -p security-results
-        # Run Bandit with JSON output
-        bandit -r . -f json -o security-results/bandit-results.json || true
-        # Convert JSON to SARIF
-        python .github/workflows/scripts/bandit-to-sarif.py security-results/bandit-results.json security-results/bandit-results.sarif
-        # Show contents of results directory
-        ls -la security-results/
-
-    - name: Upload Bandit scan results
-      uses: github/codeql-action/upload-sarif@v3
-      if: always()
-      with:
-        sarif_file: security-results/bandit-results.sarif
-        category: bandit

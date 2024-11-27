@@ -38,11 +38,15 @@ def test_generate_ssh_key(client, key_type):
     response = client.post('/generate/ssh', json=data)
     assert response.status_code == 200
     result = response.json
-    assert 'private_key' in result
-    assert 'public_key' in result
-    assert isinstance(result['private_key'], str)
-    assert isinstance(result['public_key'], str)
-    assert result['public_key'].startswith('ssh-')
+    assert 'success' in result
+    assert result['success'] == True
+    assert 'data' in result
+    result_data = result['data']
+    assert 'privateKey' in result_data
+    assert 'publicKey' in result_data
+    assert isinstance(result_data['privateKey'], str)
+    assert isinstance(result_data['publicKey'], str)
+    assert result_data['publicKey'].startswith('ssh-')
 
 @pytest.mark.parametrize('key_size', [2048, 4096])
 def test_generate_rsa_key(client, key_size):
@@ -54,12 +58,16 @@ def test_generate_rsa_key(client, key_size):
     response = client.post('/generate/rsa', json=data)
     assert response.status_code == 200
     result = response.json
-    assert 'private_key' in result
-    assert 'public_key' in result
-    assert isinstance(result['private_key'], str)
-    assert isinstance(result['public_key'], str)
-    assert '-----BEGIN PUBLIC KEY-----' in result['public_key']
-    assert '-----BEGIN ENCRYPTED PRIVATE KEY-----' in result['private_key']
+    assert 'success' in result
+    assert result['success'] == True
+    assert 'data' in result
+    result_data = result['data']
+    assert 'privateKey' in result_data
+    assert 'publicKey' in result_data
+    assert isinstance(result_data['privateKey'], str)
+    assert isinstance(result_data['publicKey'], str)
+    assert '-----BEGIN PUBLIC KEY-----' in result_data['publicKey']
+    assert '-----BEGIN ENCRYPTED PRIVATE KEY-----' in result_data['privateKey']
 
 def test_invalid_ssh_key_type(client):
     """Test error handling for invalid SSH key type"""

@@ -1,0 +1,54 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    - cron: '0 0 * * 0'  # Run weekly at midnight on Sunday
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  security:
+    name: Security Checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.13"
+        cache: 'pip'
+
+    - name: Run Snyk to check for vulnerabilities
+      continue-on-error: true
+      if: env.SNYK_TOKEN != ''
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      uses: snyk/actions/python@master
+      with:
+        command: monitor
+
+    - name: Run Bandit
+      run: |
+        python -m pip install bandit
+        mkdir -p security-results
+        bandit -r . -f json -o security-results/bandit-results.json || true
+        python .github/workflows/scripts/bandit-to-sarif.py security-results/bandit-results.json security-results/bandit-results.sarif
+        ls -la security-results/
+
+    - name: Upload Bandit scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: security-results/bandit-results.sarif
+        category: bandit
