@@ -72,9 +72,11 @@ jobs:
         python -m pip install bandit
         # Create results directory
         mkdir -p security-results
-        # Run Bandit with SARIF output
-        bandit -r . --format sarif --output security-results/bandit-results.sarif || true
-        # Verify file exists
+        # Run Bandit with JSON output
+        bandit -r . -f json -o security-results/bandit-results.json || true
+        # Convert JSON to SARIF
+        python .github/workflows/scripts/bandit-to-sarif.py security-results/bandit-results.json security-results/bandit-results.sarif
+        # Show contents of results directory
         ls -la security-results/
 
     - name: Upload Bandit scan results
@@ -83,4 +85,3 @@ jobs:
       with:
         sarif_file: security-results/bandit-results.sarif
         category: bandit
-        wait-for-processing: true
