@@ -1,5 +1,5 @@
 # Build stage
-FROM python:3.9-slim AS builder
+FROM python:3.9-slim-bookworm AS builder
 
 # Set working directory
 WORKDIR /app
@@ -8,7 +8,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     python3-dev \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
@@ -18,17 +19,19 @@ RUN pip install --no-cache-dir -r requirements.txt \
     && pip install --no-cache-dir gunicorn
 
 # Final stage
-FROM python:3.9-slim
+FROM python:3.9-slim-bookworm
 
 # Create non-root user
 RUN useradd -m -r -s /bin/false appuser
 
 # Install runtime dependencies only
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
     gnupg \
     openssh-client \
     curl \
     && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean \
     && mkdir -p /app/keys \
     && chown -R appuser:appuser /app
 
