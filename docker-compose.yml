@@ -16,6 +16,7 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
       - GNUPGHOME=/root/.gnupg
+    user: "appuser"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
       interval: 30s
@@ -40,3 +41,4 @@ services:
 
 volumes:
   gpg-home:
+    driver: local

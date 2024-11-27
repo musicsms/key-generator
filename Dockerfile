@@ -44,8 +44,9 @@ COPY --chown=appuser:appuser . .
 
 # Set proper permissions for keys directory and gnupg home
 RUN mkdir -p /root/.gnupg && \
-    chmod 700 /app/keys /root/.gnupg && \
-    chown -R root:root /root/.gnupg
+    chmod 700 /root/.gnupg && \
+    chown -R appuser:appuser /app/keys && \
+    chmod -R 700 /app/keys
 
 # Set environment variables
 ENV FLASK_APP=app.py \

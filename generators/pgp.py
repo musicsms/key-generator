@@ -128,7 +128,7 @@ def generate_pgp_key(name, email, comment=None, key_type="RSA", key_length=None,
             return error_response(str(e))
 
         # Create gpg home directory if it doesn't exist
-        gpg_home = os.path.join(os.getcwd(), 'keys', 'gpg')
+        gpg_home = os.environ.get('GNUPGHOME', os.path.join(os.getcwd(), 'keys', 'gpg'))
         os.makedirs(gpg_home, exist_ok=True)
 
         # Initialize GPG with cross-platform compatibility
