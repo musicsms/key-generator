@@ -1,0 +1,56 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ dev ]
+  pull_request:
+    branches: [ dev ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install bandit pytest
+    
+    - name: Run Bandit security checks
+      run: bandit -r . -c .bandit
+    
+    - name: Run tests
+      run: pytest
+    
+    - name: Check if all tests passed
+      if: success()
+      run: echo "All tests passed successfully!"
+
+  merge-to-main:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
+    
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    
+    - name: Configure Git
+      run: |
+        git config --global user.name 'GitHub Actions'
+        git config --global user.email 'github-actions@github.com'
+    
+    - name: Merge dev to main
+      run: |
+        git checkout main
+        git merge --no-ff dev -m "Merge dev into main"
+        git push origin main

@@ -286,7 +286,7 @@
             input.addEventListener('input', () => {
                 const sanitized = previewCommentSanitization(input.value);
                 if (sanitized) {
-                    previewSpan.textContent = `Will be saved as: ${sanitized}`;
+                    previewSpan.textContent = sanitized;
                     previewSpan.className = 'text-muted d-block mt-1';
                 } else {
                     previewSpan.textContent = 'Invalid comment format';
