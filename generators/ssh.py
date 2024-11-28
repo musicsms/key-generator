@@ -83,6 +83,7 @@ def generate_ssh_key(key_type="rsa", key_size=None, comment=None, passphrase=Non
         
         # Serialize keys
         if passphrase:
+            # For encrypted keys: Use PKCS8 format with PEM encoding
             encryption = serialization.BestAvailableEncryption(passphrase.encode())
             private_key_pem = private_key.private_bytes(
                 encoding=serialization.Encoding.PEM,
@@ -90,11 +91,22 @@ def generate_ssh_key(key_type="rsa", key_size=None, comment=None, passphrase=Non
                 encryption_algorithm=encryption
             )
         else:
-            private_key_pem = private_key.private_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PrivateFormat.OpenSSH,
-                encryption_algorithm=serialization.NoEncryption()
-            )
+            # For unencrypted keys:
+            # - RSA keys: Use TraditionalOpenSSL format (which is PKCS1 for RSA)
+            # - ED25519 keys: Use OpenSSH format
+            # - Other keys: Use TraditionalOpenSSL format
+            if key_type == 'ed25519':
+                private_key_pem = private_key.private_bytes(
+                    encoding=serialization.Encoding.PEM,
+                    format=serialization.PrivateFormat.OpenSSH,
+                    encryption_algorithm=serialization.NoEncryption()
+                )
+            else:
+                private_key_pem = private_key.private_bytes(
+                    encoding=serialization.Encoding.PEM,
+                    format=serialization.PrivateFormat.TraditionalOpenSSL,
+                    encryption_algorithm=serialization.NoEncryption()
+                )
         
         public_key = private_key.public_key()
         public_key_ssh = public_key.public_bytes(
@@ -106,6 +118,23 @@ def generate_ssh_key(key_type="rsa", key_size=None, comment=None, passphrase=Non
         public_key_str = public_key_ssh.decode()
         if comment:
             public_key_str += f' {comment}'
+            
+        # Generate unique directory for key storage
+        key_dir = os.path.join(os.environ.get('KEY_STORAGE_PATH', '/tmp'), str(uuid.uuid4()))
+        os.makedirs(key_dir, mode=0o700, exist_ok=True)
+        
+        # Define key paths
+        private_path = os.path.join(key_dir, 'id_' + key_type)
+        public_path = os.path.join(key_dir, 'id_' + key_type + '.pub')
+        
+        # Write keys to files
+        with open(private_path, 'wb') as f:
+            os.chmod(private_path, 0o600)
+            f.write(private_key_pem)
+            
+        with open(public_path, 'w') as f:
+            os.chmod(public_path, 0o644)
+            f.write(public_key_str)
         
         return info_response({
             'privateKey': private_key_pem.decode(),

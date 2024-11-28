@@ -74,7 +74,7 @@ def ssh():
             key_type=data.get('keyType', 'rsa'),
             key_size=key_size,
             comment=comment,
-            passphrase=data.get('passphrase', '')
+            passphrase=data.get('passphrase') if 'passphrase' in data else None
         )
         
         if not isinstance(result, dict):
