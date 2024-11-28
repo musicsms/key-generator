@@ -5,7 +5,10 @@ import re
 from utils.response import info_response, error_response
 from utils.sanitize import validate_comment
 from utils.utils import create_output_directory, save_key_pair
+# Subprocess is required for GPG operations and is used securely with input validation
+# nosec B404 - subprocess is necessary for GPG operations
 from subprocess import run, CalledProcessError
+import shutil
 
 # Key type configurations
 KEY_TYPES = {
@@ -36,76 +39,68 @@ def _calculate_expire_date(expire_time):
     except ValueError:
         raise ValueError("Invalid expiration time format. Use 'Xy' where X is number of years, or 'never'")
 
+def _get_gpg_path():
+    """Get the full path to the GPG executable."""
+    gpg_path = shutil.which('gpg')
+    if not gpg_path:
+        return None
+    return gpg_path
+
 def _check_gpg_installation():
     """
-    Check if GPG is properly installed and accessible.
-    
+    Check if GPG is installed and accessible.
     Returns:
         tuple: (bool, str) - (is_installed, error_message)
     """
     try:
-        # Try to run gpg --version
-        if os.sys.platform == 'win32':
-            # Check common Windows GPG installation paths
-            gpg_paths = [
-                os.path.join(os.environ.get('ProgramFiles', ''), 'GnuPG', 'bin', 'gpg.exe'),
-                os.path.join(os.environ.get('ProgramFiles(x86)', ''), 'GnuPG', 'bin', 'gpg.exe'),
-                'gpg.exe'  # If in PATH
-            ]
+        gpg_path = _get_gpg_path()
+        if not gpg_path:
+            return False, "GPG is not installed or not in PATH"
             
-            for path in gpg_paths:
-                try:
-                    run([path, '--version'], 
-                        capture_output=True, 
-                        text=True, 
-                        check=True)
-                    return True, None
-                except (CalledProcessError, FileNotFoundError):
-                    continue
-                    
-            return False, (
-                "GnuPG (GPG) is not properly configured on Windows. Please:\n"
-                "1. Install Gpg4win from https://www.gpg4win.org\n"
-                "2. Ensure GPG is added to your system PATH\n"
-                "3. Restart your computer after installation\n"
-                "4. If still not working, try running the application as administrator"
-            )
-        else:
-            # Unix-like systems
-            run(['gpg', '--version'], 
-                capture_output=True, 
-                text=True, 
-                check=True)
-            return True, None
+        # Use the full path to GPG with input validation
+        # nosec B603 - we are using a validated full path from shutil.which()
+        result = run([gpg_path, '--version'], 
+            capture_output=True, 
+            text=True, 
+            check=True)
+        return True, None
+            
     except CalledProcessError as e:
-        return False, f"GPG error: {e.stderr}"
-    except FileNotFoundError:
-        return False, (
-            "GnuPG (GPG) is not installed. Please install it:\n"
-            "- Windows: Download and install from https://www.gpg4win.org\n"
-            "- macOS: Install using 'brew install gnupg'\n"
-            "- Linux: Install using 'apt-get install gnupg'"
-        )
+        return False, f"Error checking GPG: {str(e)}"
+    except Exception as e:
+        return False, f"Unexpected error checking GPG: {str(e)}"
 
 def generate_pgp_key(name, email, comment=None, key_type="RSA", key_length=None, curve=None, 
                     passphrase=None, expire_time="2y"):
+    """
+    Generate a PGP key pair.
+    """
     try:
-        # Check GPG installation first
-        gpg_installed, error_message = _check_gpg_installation()
-        if not gpg_installed:
-            return error_response(error_message)
+        # Validate inputs
+        if not name or not email:
+            return error_response("Name and email are required")
+            
+        # Get GPG path
+        gpg_path = _get_gpg_path()
+        if not gpg_path:
+            return error_response("GPG is not installed or not in PATH")
+            
+        # Check GPG installation
+        gpg_ok, error_msg = _check_gpg_installation()
+        if not gpg_ok:
+            return error_response(error_msg)
+
+        # Validate and sanitize comment
+        if comment:
+            try:
+                comment = validate_comment(comment)
+            except ValueError as e:
+                return error_response(str(e))
 
         # Validate key type
         key_type = key_type.upper()
         if key_type not in ["RSA", "ECC"]:
             return error_response("Invalid key type. Must be 'RSA' or 'ECC'")
-
-        # Validate and sanitize comment if provided
-        try:
-            if comment:
-                comment = validate_comment(comment)
-        except ValueError as e:
-            return error_response(str(e))
 
         # Validate and set key length for RSA
         if key_type == "RSA":

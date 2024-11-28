@@ -1,0 +1,190 @@
+openapi: 3.0.0
+info:
+  title: Key Generator API
+  description: API for generating various types of cryptographic keys
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:5000
+    description: Development server
+
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      responses:
+        '200':
+          description: Service health status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+
+  /generate/passphrase:
+    post:
+      summary: Generate a secure passphrase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                length:
+                  type: integer
+                  minimum: 8
+                  maximum: 128
+                  default: 16
+                includeNumbers:
+                  type: boolean
+                  default: true
+                includeSpecial:
+                  type: boolean
+                  default: true
+                excludeChars:
+                  type: string
+                  example: '0o1l'
+      responses:
+        '200':
+          description: Generated passphrase
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      passphrase:
+                        type: string
+
+  /generate/ssh:
+    post:
+      summary: Generate SSH key pair
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                keyType:
+                  type: string
+                  enum: [rsa, ecdsa, ed25519]
+                  default: ed25519
+                passphrase:
+                  type: string
+                comment:
+                  type: string
+      responses:
+        '200':
+          description: Generated SSH key pair
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      privateKey:
+                        type: string
+                      publicKey:
+                        type: string
+
+  /generate/rsa:
+    post:
+      summary: Generate RSA key pair
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                keySize:
+                  type: integer
+                  enum: [2048, 3072, 4096]
+                  default: 2048
+                passphrase:
+                  type: string
+      responses:
+        '200':
+          description: Generated RSA key pair
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      privateKey:
+                        type: string
+                      publicKey:
+                        type: string
+
+  /generate/pgp:
+    post:
+      summary: Generate PGP key pair
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                passphrase:
+                  type: string
+                keyType:
+                  type: string
+                  enum: [RSA, DSA]
+                  default: RSA
+                keyLength:
+                  type: integer
+                  enum: [2048, 3072, 4096]
+                  default: 2048
+      responses:
+        '200':
+          description: Generated PGP key pair
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      privateKey:
+                        type: string
+                      publicKey:
+                        type: string
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: Invalid parameters provided
