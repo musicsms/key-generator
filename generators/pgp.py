@@ -228,7 +228,7 @@ def generate_pgp_key(
 
         # Create gpg home directory if it doesn't exist
         gpg_home = os.environ.get('GNUPGHOME', os.path.join(os.getcwd(), 'keys', 'gpg'))
-        os.makedirs(gpg_home, exist_ok=True)
+        os.makedirs(gpg_home, mode=0o700, exist_ok=True)  # Use 700 permissions to restrict access
 
         # Initialize GPG with cross-platform compatibility
         try:

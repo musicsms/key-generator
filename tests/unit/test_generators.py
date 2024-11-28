@@ -84,7 +84,7 @@ def test_pgp_key_generation_rsa(gpg_home):
         email='test@example.com',
         key_type='RSA',
         key_length=2048,
-        passphrase='test123',
+        passphrase=generate_passphrase()['passphrase'],
         expire_time='2y',
         comment='Test Key'
     )
