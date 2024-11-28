@@ -40,12 +40,14 @@ jobs:
         chmod -R 700 keys
     
     - name: Run Bandit security checks
-      run: bandit -r . -c .bandit.yaml -x B101,B108 -f sarif -o bandit-results.sarif
+      run: |
+        bandit -r . -c .bandit.yaml -x B101,B108 -f json -o bandit-results.json
     
     - name: Run Safety dependency check
       run: safety check --full-report
     
-    - name: Upload Bandit SARIF report
-      uses: github/codeql-action/upload-sarif@v2
+    - name: Upload Bandit report
+      uses: actions/upload-artifact@v3
       with:
-        sarif_file: bandit-results.sarif
+        name: bandit-security-report
+        path: bandit-results.json
