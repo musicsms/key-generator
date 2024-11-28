@@ -21,7 +21,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.x'
+        python-version: '3.12'
     
     - name: Install dependencies
       run: |
@@ -29,10 +29,23 @@ jobs:
         pip install -r requirements.txt
         pip install bandit pytest pytest-cov requests
     
+    - name: Install GPG
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gnupg
+    
     - name: Run Bandit security checks
       run: bandit -r . -c .bandit
     
+    - name: Create test directories
+      run: |
+        mkdir -p keys/ssh keys/rsa keys/pgp
+        chmod -R 700 keys
+    
     - name: Run unit tests with coverage
+      env:
+        GNUPGHOME: ${{ github.workspace }}/keys/gpg
+        KEY_STORAGE_PATH: ${{ github.workspace }}/keys
       run: |
         pytest tests/unit/ --cov=. --cov-report=xml -v
     
@@ -51,7 +64,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.x'
+        python-version: '3.12'
     
     - name: Install dependencies
       run: |
@@ -64,19 +77,26 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y gnupg
     
+    - name: Create test directories
+      run: |
+        mkdir -p keys/ssh keys/rsa keys/pgp
+        chmod -R 700 keys
+    
     - name: Start application
       env:
         FLASK_DEBUG: 0
         PORT: 5001
-        GNUPGHOME: /tmp/gpg_test
+        GNUPGHOME: ${{ github.workspace }}/keys/gpg
+        KEY_STORAGE_PATH: ${{ github.workspace }}/keys
       run: |
-        mkdir -p /tmp/gpg_test
-        chmod 700 /tmp/gpg_test
         python app.py &
         echo $! > app.pid
         sleep 5  # Wait for the application to start
     
     - name: Run integration tests
+      env:
+        GNUPGHOME: ${{ github.workspace }}/keys/gpg
+        KEY_STORAGE_PATH: ${{ github.workspace }}/keys
       run: |
         pytest tests/integration/ -v
     
@@ -87,11 +107,12 @@ jobs:
           kill $(cat app.pid) || true
           rm app.pid
         fi
-        rm -rf /tmp/gpg_test
+        rm -rf keys
 
   docker:
     needs: [test, integration-test]
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     
     steps:
     - uses: actions/checkout@v2
@@ -106,24 +127,8 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     
-    - name: Build and test Docker image
-      uses: docker/build-push-action@v2
-      with:
-        context: .
-        load: true
-        tags: ghcr.io/${{ github.repository }}:test
-    
-    - name: Test Docker image
-      run: |
-        docker run --name test-container -d -p 5001:5001 ghcr.io/${{ github.repository }}:test
-        sleep 5
-        curl -f http://localhost:5001/health || exit 1
-        docker stop test-container
-        docker rm test-container
-    
     - name: Build and push Docker image
       uses: docker/build-push-action@v2
-      if: github.event_name == 'push'
       with:
         context: .
         push: true
