@@ -64,11 +64,10 @@ Generates an SSH key pair.
 
 ```json
 {
-    "type": "rsa",           // Required: "rsa", "ecdsa", or "ed25519"
-    "bits": 4096,           // Optional for RSA (2048, 3072, 4096), ignored for others
-    "curve": "prime256v1",  // Required for ECDSA, ignored for others
-    "comment": "work_key",  // Optional
-    "passphrase": "secure"  // Optional
+    "keyType": "rsa",          // Required: "rsa", "ecdsa", or "ed25519"
+    "keySize": 4096,           // Optional for RSA (2048, 4096), ECDSA (256, 384, 521)
+    "comment": "work_key",     // Optional
+    "passphrase": "secure"     // Optional, if provided the private key will be encrypted
 }
 ```
 
@@ -78,11 +77,16 @@ Generates an SSH key pair.
 {
     "success": true,
     "data": {
-        "privateKey": "-----BEGIN OPENSSH PRIVATE KEY-----\n...",
-        "publicKey": "ssh-rsa AAAA..."
+        "privateKey": "-----BEGIN ENCRYPTED PRIVATE KEY-----\n...", // PKCS8 format if passphrase provided
+        "publicKey": "ssh-rsa AAAA... work_key",
+        "keyType": "rsa",
+        "keySize": 4096,
+        "comment": "work_key"
     }
 }
 ```
+
+Note: When a passphrase is provided, the private key will be encrypted using PKCS8 format. Without a passphrase, the key will be in OpenSSH format.
 
 ### Generate RSA Key
 
@@ -126,14 +130,13 @@ Generates a PGP key pair.
 
 ```json
 {
-    "name": "John Doe",     // Required
-    "email": "john@example.com",  // Required
-    "comment": "work_key",  // Optional
-    "key_type": "RSA",     // Optional: "RSA" or "ECC"
-    "key_length": 4096,    // Optional for RSA (2048, 3072, 4096)
-    "curve": "prime256v1", // Required for ECC
-    "passphrase": "secure", // Optional
-    "expire_time": "2y"    // Optional, format: number + y/m/d (e.g., "2y", "6m", "90d")
+    "name": "John Doe",         // Required
+    "email": "john@example.com",// Required
+    "comment": "work_key",      // Optional
+    "keyType": "RSA",          // Optional: "RSA" (default) or "ECC"
+    "keyLength": 4096,         // Optional for RSA (2048, 4096)
+    "passphrase": "secure",     // Optional but recommended
+    "expireTime": "never"      // Optional, default: "never", or format: "1y", "2y", "3y", "5y"
 }
 ```
 
@@ -144,10 +147,19 @@ Generates a PGP key pair.
     "success": true,
     "data": {
         "privateKey": "-----BEGIN PGP PRIVATE KEY BLOCK-----\n...",
-        "publicKey": "-----BEGIN PGP PUBLIC KEY BLOCK-----\n..."
+        "publicKey": "-----BEGIN PGP PUBLIC KEY BLOCK-----\n...",
+        "keyId": "0123456789ABCDEF",
+        "keyType": "RSA",
+        "keyLength": 4096,
+        "name": "John Doe",
+        "email": "john@example.com",
+        "comment": "work_key",
+        "expireDate": "0"
     }
 }
 ```
+
+Note: When expireTime is set to "never", the key will not have an expiration date. For other values, specify the number of years (e.g., "1y", "2y", etc.).
 
 ## Error Responses
 

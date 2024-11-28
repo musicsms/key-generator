@@ -1,9 +1,17 @@
 // Generation handlers for different key types
-import { showLoading, hideLoading, displayMessage, clearOutputs } from './utils.js';
+import { showLoading, hideLoading, displayMessage, copyToClipboard, clearOutputs } from './utils.js';
 import { validateComment } from './validation.js';
+
+// Helper function to get the output section for the current tab
+function getResultSection() {
+    const activeTab = document.querySelector('.tab-pane.active');
+    if (!activeTab) return null;
+    return activeTab.querySelector('.result-section');
+}
 
 export function handlePassphraseGeneration(e) {
     e.preventDefault();
+    e.stopPropagation();
     const form = e.target;
     const formData = new FormData(form);
     
@@ -58,6 +66,7 @@ export function handlePassphraseGeneration(e) {
 
 export function handleSSHKeyGeneration(e) {
     e.preventDefault();
+    e.stopPropagation();
     clearOutputs();
     
     try {
@@ -106,6 +115,7 @@ export function handleSSHKeyGeneration(e) {
 
 export function handleRSAKeyGeneration(e) {
     e.preventDefault();
+    e.stopPropagation();
     clearOutputs();
     
     try {
@@ -152,6 +162,7 @@ export function handleRSAKeyGeneration(e) {
 
 export async function handlePGPKeyGeneration(e) {
     e.preventDefault();
+    e.stopPropagation();
     clearOutputs();
     
     try {
@@ -161,8 +172,7 @@ export async function handlePGPKeyGeneration(e) {
         // Validate and sanitize inputs
         const comment = validateComment(formData.get('comment'));
         const keyType = formData.get('keyType');
-        const keySize = parseInt(formData.get('keySize'));
-        const curve = formData.get('curve');
+        const keyLength = parseInt(formData.get('keyLength'));
         const name = formData.get('name').trim();
         const email = formData.get('email').trim();
         const passphrase = formData.get('passphrase');
@@ -171,6 +181,10 @@ export async function handlePGPKeyGeneration(e) {
         // Additional validations
         if (!name || !email) {
             throw new Error('Name and email are required for PGP keys');
+        }
+
+        if (keyLength !== 2048 && keyLength !== 4096) {
+            throw new Error('Key length must be 2048 or 4096 bits');
         }
 
         showLoading();
@@ -186,8 +200,7 @@ export async function handlePGPKeyGeneration(e) {
                 email: email,
                 comment: comment,
                 keyType: keyType,
-                keyLength: keySize,
-                curve: curve,
+                keyLength: keyLength,
                 passphrase: passphrase,
                 expireTime: expireTime
             })
@@ -200,109 +213,94 @@ export async function handlePGPKeyGeneration(e) {
             throw new Error(result.error_message || 'Failed to generate PGP key');
         }
 
-        // Clear any previous results
-        clearOutputs();
+        displayMessage(`PGP key pair generated successfully!`, 'success');
+        displayKeys(result.data.privateKey, result.data.publicKey);
 
-        // Extract key data from the correct location in the response
-        const keyData = result.data.message || result.data;
-        if (!keyData) {
-            throw new Error('Invalid response format: missing key data');
+        // Display additional information
+        const resultSection = getResultSection();
+        if (resultSection) {
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'alert alert-info mt-3';
+            infoDiv.innerHTML = `
+                <h5>Key Information:</h5>
+                <ul>
+                    <li>Key Type: ${result.data.keyType}</li>
+                    <li>Key Length: ${result.data.keyLength} bits</li>
+                    <li>Key ID: ${result.data.keyId}</li>
+                    <li>Expiration: ${result.data.expireDate}</li>
+                    <li>Files saved in: ${result.data.directory}</li>
+                </ul>
+            `;
+            resultSection.appendChild(infoDiv);
         }
 
-        console.log('Received key data:', keyData);
-
-        // Display the generated keys
-        const publicKeyElement = document.getElementById('publicKey');
-        const privateKeyElement = document.getElementById('privateKey');
-        
-        if (publicKeyElement && privateKeyElement) {
-            publicKeyElement.value = keyData.publicKey || '';
-            privateKeyElement.value = keyData.privateKey || '';
-            
-            // Show key pair result section
-            const resultSection = document.getElementById('resultSection');
-            const keyPairResult = document.getElementById('keyPairResult');
-            
-            if (resultSection) resultSection.style.display = 'block';
-            if (keyPairResult) {
-                keyPairResult.style.display = 'block';
-                
-                // Remove any existing additional info
-                const existingInfo = keyPairResult.querySelector('.alert-info');
-                if (existingInfo) {
-                    existingInfo.remove();
-                }
-
-                // Add additional info
-                const additionalInfo = document.createElement('div');
-                additionalInfo.className = 'alert alert-info mt-3';
-                additionalInfo.innerHTML = `
-                    <h5>Key Details:</h5>
-                    <ul class="mb-0">
-                        <li>Key ID: ${keyData.keyId || 'N/A'}</li>
-                        <li>Key Type: ${keyData.keyType || keyType}</li>
-                        ${keyData.keyLength ? `<li>Key Length: ${keyData.keyLength} bits</li>` : ''}
-                        ${keyData.curve ? `<li>Curve: ${keyData.curve}</li>` : ''}
-                        <li>Expiration: ${keyData.expireDate || 'N/A'}</li>
-                    </ul>
-                `;
-                keyPairResult.appendChild(additionalInfo);
-            }
-        }
     } catch (error) {
         hideLoading();
-        console.error('PGP Key Generation Error:', error);
         displayMessage(error.message, 'danger');
     }
 }
 
 function displayKeys(privateKey, publicKey) {
-    const resultSection = document.getElementById('resultSection');
-    const keyPairResult = document.getElementById('keyPairResult');
-    const privateKeyOutput = document.getElementById('privateKey');
-    const publicKeyOutput = document.getElementById('publicKey');
-    
-    // Show the result sections
-    if (resultSection) resultSection.style.display = 'block';
-    if (keyPairResult) keyPairResult.style.display = 'block';
-    
-    // Display the keys
-    if (privateKeyOutput) {
-        privateKeyOutput.value = privateKey;
-    }
-    
-    if (publicKeyOutput) {
-        publicKeyOutput.value = publicKey;
-    }
+    const resultSection = getResultSection();
+    if (!resultSection) return;
+
+    resultSection.innerHTML = `
+        <div class="alert alert-success mb-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <strong>Private Key:</strong>
+                <button class="btn btn-sm btn-outline-success copy-btn" data-target="privateKey">Copy</button>
+            </div>
+            <pre id="privateKey" class="mt-2 mb-0">${privateKey}</pre>
+        </div>
+        <div class="alert alert-success">
+            <div class="d-flex justify-content-between align-items-center">
+                <strong>Public Key:</strong>
+                <button class="btn btn-sm btn-outline-success copy-btn" data-target="publicKey">Copy</button>
+            </div>
+            <pre id="publicKey" class="mt-2 mb-0">${publicKey}</pre>
+        </div>
+    `;
+
+    // Add click handlers for copy buttons
+    resultSection.querySelectorAll('.copy-btn').forEach(button => {
+        const textId = button.getAttribute('data-target');
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            copyToClipboard(textId);
+        });
+    });
 }
 
 export function displayPassphrase(passphrase) {
-    const resultSection = document.getElementById('resultSection');
-    const passphraseResult = document.getElementById('passphraseResult');
-    const passphraseOutput = document.getElementById('passphraseOutput');
-    
-    if (resultSection) resultSection.style.display = 'block';
-    if (passphraseResult) passphraseResult.style.display = 'block';
-    if (passphraseOutput) passphraseOutput.value = passphrase;
+    const resultSection = getResultSection();
+    if (!resultSection) return;
+
+    resultSection.innerHTML = `
+        <div class="alert alert-success">
+            <div class="d-flex justify-content-between align-items-center">
+                <strong>Generated Passphrase:</strong>
+                <button class="btn btn-sm btn-outline-success copy-btn" data-target="passphrase">Copy</button>
+            </div>
+            <pre id="passphrase" class="mt-2 mb-0">${passphrase}</pre>
+        </div>
+    `;
+
+    // Add click handler for copy button
+    const copyBtn = resultSection.querySelector('.copy-btn');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            copyToClipboard('passphrase');
+        });
+    }
 }
 
-// PGP Key Type and Options Mapping
+// Update PGP Key Options to match backend
 export const PGP_KEY_OPTIONS = {
     RSA: {
-        lengths: [
-            { value: '2048', label: '2048 bits' },
-            { value: '3072', label: '3072 bits' },
-            { value: '4096', label: '4096 bits' }
-        ]
-    },
-    ECC: {
-        curves: [
-            { value: 'secp256k1', label: 'secp256k1' },
-            { value: 'secp384r1', label: 'secp384r1' },
-            { value: 'secp521r1', label: 'secp521r1' },
-            { value: 'brainpoolP256r1', label: 'brainpoolP256r1' },
-            { value: 'brainpoolP384r1', label: 'brainpoolP384r1' },
-            { value: 'brainpoolP512r1', label: 'brainpoolP512r1' }
-        ]
+        lengths: [2048, 4096],
+        defaultLength: 2048
     }
 };

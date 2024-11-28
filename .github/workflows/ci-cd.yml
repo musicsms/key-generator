@@ -34,14 +34,14 @@ jobs:
     
     - name: Run unit tests with coverage
       run: |
-        pytest tests/ --cov=. --cov-report=xml -v
+        pytest tests/unit/ --cov=. --cov-report=xml -v
     
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-  function-test:
+  integration-test:
     needs: test
     runs-on: ubuntu-latest
     
@@ -65,20 +65,32 @@ jobs:
         sudo apt-get install -y gnupg
     
     - name: Start application
+      env:
+        FLASK_DEBUG: 0
+        PORT: 5001
+        GNUPGHOME: /tmp/gpg_test
       run: |
+        mkdir -p /tmp/gpg_test
+        chmod 700 /tmp/gpg_test
         python app.py &
+        echo $! > app.pid
         sleep 5  # Wait for the application to start
     
-    - name: Run functional tests
+    - name: Run integration tests
       run: |
-        pytest tests/functional/ -v
+        pytest tests/integration/ -v
     
-    - name: Stop application
+    - name: Cleanup
+      if: always()
       run: |
-        pkill -f "python app.py" || true
+        if [ -f app.pid ]; then
+          kill $(cat app.pid) || true
+          rm app.pid
+        fi
+        rm -rf /tmp/gpg_test
 
   docker:
-    needs: [test, function-test]
+    needs: [test, integration-test]
     runs-on: ubuntu-latest
     
     steps:
