@@ -44,7 +44,13 @@ jobs:
         bandit -r . -c .bandit.yaml -x B101,B108 -f json -o bandit-results.json
     
     - name: Run Safety dependency check
-      run: safety check --full-report
+      run: |
+        safety check --full-report || true  # Continue workflow even if vulnerabilities are found
+    
+    - name: Analyze Safety Report
+      run: |
+        safety check --output json > safety-report.json
+        cat safety-report.json
     
     - name: Upload Bandit report
       uses: actions/upload-artifact@v3
