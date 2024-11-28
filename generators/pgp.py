@@ -30,14 +30,25 @@ def _calculate_expire_date(expire_time):
         return '0'
     
     try:
-        years = int(expire_time.lower().rstrip('y'))
-        if years <= 0:
-            return '0'
-        
-        expire_date = datetime.now() + timedelta(days=365 * years)
-        return expire_date.strftime('%Y-%m-%d')
+        # Handle days format (e.g., '1d')
+        if expire_time.lower().endswith('d'):
+            days = int(expire_time.lower().rstrip('d'))
+            if days <= 0:
+                return '0'
+            expire_date = datetime.now() + timedelta(days=days)
+            return expire_date.strftime('%Y-%m-%d')
+            
+        # Handle years format (e.g., '1y')
+        if expire_time.lower().endswith('y'):
+            years = int(expire_time.lower().rstrip('y'))
+            if years <= 0:
+                return '0'
+            expire_date = datetime.now() + timedelta(days=365 * years)
+            return expire_date.strftime('%Y-%m-%d')
+            
+        raise ValueError("Invalid expiration time format")
     except ValueError:
-        raise ValueError("Invalid expiration time format. Use 'Xy' where X is number of years, or 'never'")
+        raise ValueError("Invalid expiration time format. Use 'Xd' for days, 'Xy' for years, or 'never'")
 
 def _get_gpg_path():
     """Get the full path to the GPG executable."""
@@ -71,7 +82,7 @@ def _check_gpg_installation():
         return False, f"Unexpected error checking GPG: {str(e)}"
 
 def generate_pgp_key(name, email, comment=None, key_type="RSA", key_length=None, curve=None, 
-                    passphrase=None, expire_time="2y"):
+                    passphrase=None, expire_time="never"):
     """
     Generate a PGP key pair.
     """
@@ -129,10 +140,10 @@ def generate_pgp_key(name, email, comment=None, key_type="RSA", key_length=None,
         # Initialize GPG with cross-platform compatibility
         try:
             # Try newer versions of python-gnupg
-            gpg = gnupg.GPG(gnupghome=gpg_home)
+            gpg = gnupg.GPG(gnupghome=gpg_home, gpgbinary=gpg_path)
         except TypeError:
             # Fall back for older versions
-            gpg = gnupg.GPG(homedir=gpg_home)
+            gpg = gnupg.GPG(homedir=gpg_home, gpgbinary=gpg_path)
             
         # Try to list keys to verify GPG is working
         try:
@@ -150,36 +161,20 @@ def generate_pgp_key(name, email, comment=None, key_type="RSA", key_length=None,
         if comment:
             name_string = f"{name} ({comment})"
         
-        key_input = {
-            'name_real': name_string,
-            'name_email': email,
-            'expire_date': expire_date,
-            'key_usage': 'encrypt,sign,auth',
-        }
-
-        # Add key type specific parameters
-        if key_type == "RSA":
-            key_input.update({
-                'key_type': key_type,
-                'key_length': key_length,
-                'subkey_type': key_type,
-                'subkey_length': key_length,
-                'subkey_usage': 'encrypt,sign'
-            })
-        else:
-            key_input.update({
-                'key_type': 'ECC',
-                'curve': curve,
-                'subkey_type': 'ECC',
-                'subkey_curve': curve,
-                'subkey_usage': 'encrypt,sign'
-            })
-
-        if passphrase:
-            key_input['passphrase'] = passphrase
+        # Create key input string in the format expected by GPG
+        key_input = gpg.gen_key_input(
+            name_real=name_string,
+            name_email=email,
+            expire_date=expire_date,
+            key_type='RSA' if key_type == 'RSA' else 'DSA',
+            key_length=key_length if key_type == 'RSA' else 2048,
+            subkey_type='RSA',
+            subkey_length=key_length if key_type == 'RSA' else 2048,
+            passphrase=passphrase if passphrase else None
+        )
 
         # Generate key
-        key = gpg.gen_key(gpg.gen_key_input(**key_input))
+        key = gpg.gen_key(key_input)
         
         if not key:
             return error_response("Failed to generate PGP key")
@@ -193,6 +188,9 @@ def generate_pgp_key(name, email, comment=None, key_type="RSA", key_length=None,
             secret=True, 
             passphrase=passphrase
         )
+
+        if not ascii_armored_public_key or not ascii_armored_private_key:
+            return error_response("Failed to export generated keys")
 
         # Create a directory for the key using create_output_directory
         key_dir = create_output_directory('pgp', comment or email.replace('@', '_at_'))
@@ -211,17 +209,13 @@ def generate_pgp_key(name, email, comment=None, key_type="RSA", key_length=None,
             'privateKey': ascii_armored_private_key,
             'keyId': str(key),
             'keyType': key_type,
-            'directory': key_dir,
-            'privatePath': private_path,
-            'publicPath': public_path,
-            'expireDate': expire_date if expire_date != '0' else 'never'
+            'keyLength': key_length if key_type == 'RSA' else None,
+            'curve': curve if key_type == 'ECC' else None,
+            'name': name,
+            'email': email,
+            'comment': comment,
+            'expireDate': expire_date
         }
-
-        # Add key type specific details
-        if key_type == "RSA":
-            response_data['keyLength'] = key_length
-        else:
-            response_data['curve'] = curve
 
         return info_response(response_data)
 

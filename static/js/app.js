@@ -87,9 +87,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Add global click handler to ensure clearing
     document.addEventListener('click', function(e) {
-        // Check if click is outside of result areas
-        const resultSection = document.getElementById('resultSection');
-        if (resultSection && !resultSection.contains(e.target)) {
+        // Only clear if clicking a tab or the generate buttons
+        if (e.target.closest('[data-bs-toggle="tab"]') || 
+            (e.target.tagName === 'BUTTON' && e.target.type === 'submit')) {
             clearOutputs();
         }
     });

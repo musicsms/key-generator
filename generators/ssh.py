@@ -82,13 +82,19 @@ def generate_ssh_key(key_type="rsa", key_size=None, comment=None, passphrase=Non
             key_name = 'ssh-ed25519'
         
         # Serialize keys
-        encryption = serialization.BestAvailableEncryption(passphrase.encode()) if passphrase else serialization.NoEncryption()
-        
-        private_key_pem = private_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.OpenSSH,
-            encryption_algorithm=encryption
-        )
+        if passphrase:
+            encryption = serialization.BestAvailableEncryption(passphrase.encode())
+            private_key_pem = private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=encryption
+            )
+        else:
+            private_key_pem = private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.OpenSSH,
+                encryption_algorithm=serialization.NoEncryption()
+            )
         
         public_key = private_key.public_key()
         public_key_ssh = public_key.public_bytes(

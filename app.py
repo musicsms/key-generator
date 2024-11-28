@@ -216,9 +216,9 @@ def pgp():
                 'error_message': 'Name and email are required'
             }), 400
 
-        # Optional parameters
+        # Optional parameters with case conversion for key_type
         comment = data.get('comment')
-        key_type = data.get('keyType', 'RSA')
+        key_type = data.get('keyType', 'RSA').upper()  # Convert to uppercase for consistency
         key_length = data.get('keyLength')  # Optional for RSA
         curve = data.get('curve')  # Optional for ECC
         passphrase = data.get('passphrase')
@@ -236,6 +236,16 @@ def pgp():
         )
 
         if result.get('success'):
+            # Save keys but don't include directory info in response
+            dir_path = create_output_directory('pgp', comment or email.replace('@', '_at_'))
+            save_key_pair(
+                result['data']['privateKey'],
+                result['data']['publicKey'],
+                dir_path,
+                'pgp'
+            )
+            
+            # Return result without directory information
             return jsonify(result)
         else:
             return jsonify(result), 400
