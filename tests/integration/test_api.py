@@ -27,9 +27,10 @@ def test_generate_passphrase():
 
 def test_generate_ssh_key():
     """Test SSH key generation"""
+    # Test with passphrase (should use PEM/PKCS8 format)
     payload = {
-        "type": "rsa",
-        "bits": 2048,
+        "keyType": "rsa",
+        "keySize": 2048,
         "comment": "test_key",
         "passphrase": "test123"
     }
@@ -39,13 +40,31 @@ def test_generate_ssh_key():
     assert data["success"] is True
     assert "privateKey" in data["data"]
     assert "publicKey" in data["data"]
-    assert data["data"]["privateKey"].startswith("-----BEGIN OPENSSH PRIVATE KEY-----")
+    assert data["data"]["privateKey"].startswith("-----BEGIN ENCRYPTED PRIVATE KEY-----")
+    assert "ssh-rsa" in data["data"]["publicKey"]
+    assert "test_key" in data["data"]["publicKey"]
+    assert data["data"]["keyType"] == "rsa"
+    assert data["data"]["keySize"] == 2048
+    
+    # Test without passphrase (should use PKCS1 format for RSA)
+    payload = {
+        "keyType": "rsa",
+        "keySize": 2048,
+        "comment": "test_key"
+    }
+    response = requests.post(f"{BASE_URL}/generate/ssh", json=payload, timeout=5)
+    if response.status_code != 200:
+        print("Error response:", response.json())  # Print error for debugging
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["data"]["privateKey"].startswith("-----BEGIN RSA PRIVATE KEY-----")
     assert "ssh-rsa" in data["data"]["publicKey"]
 
 def test_generate_rsa_key():
     """Test RSA key generation"""
     payload = {
-        "bits": 2048,
+        "keySize": 2048,
         "comment": "test_key",
         "passphrase": "test123"
     }
@@ -64,10 +83,10 @@ def test_generate_pgp_key():
         "name": "Test User",
         "email": "test@example.com",
         "comment": "test_key",
-        "key_type": "RSA",
-        "key_length": 2048,
+        "keyType": "RSA",
+        "keyLength": 2048,
         "passphrase": "test123",
-        "expire_time": "1y"
+        "expireTime": "1y"
     }
     response = requests.post(f"{BASE_URL}/generate/pgp", json=payload, timeout=5)
     assert response.status_code == 200
@@ -82,11 +101,11 @@ def test_generate_pgp_key():
 def test_invalid_input():
     """Test error handling for invalid input"""
     payload = {
-        "type": "invalid",
-        "bits": 1024
+        "keyType": "invalid",
+        "keySize": 1024
     }
     response = requests.post(f"{BASE_URL}/generate/ssh", json=payload, timeout=5)
     assert response.status_code in [400, 422]
     data = response.json()
     assert data["success"] is False
-    assert "error" in data
+    assert "error_message" in data

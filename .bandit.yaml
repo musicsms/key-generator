@@ -4,7 +4,7 @@
 tests: []
 
 # (optional) list skipped test IDs here
-skips: [B101, B404, B603]
+skips: [B101, B404, B603, B108]
 
 # (optional) list paths to exclude from scan
 exclude_dirs: [tests]

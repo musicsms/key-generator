@@ -77,15 +77,16 @@ def test_rsa_key_generation():
     assert result['data']['privateKey'].startswith('-----BEGIN')
     assert result['data']['publicKey'].startswith('-----BEGIN PUBLIC KEY-----')
 
-def test_pgp_key_generation(gpg_home):
-    """Test PGP key generation"""
+def test_pgp_key_generation_rsa(gpg_home):
+    """Test PGP key generation with RSA"""
     result = generate_pgp_key(
         name='Test User',
         email='test@example.com',
         key_type='RSA',
         key_length=2048,
-        passphrase='test123',
-        expire_time='2y'
+        passphrase=generate_passphrase()['passphrase'],
+        expire_time='2y',
+        comment='Test Key'
     )
     assert result['success'] is True
     assert result['data']['privateKey'].startswith('-----BEGIN PGP PRIVATE KEY BLOCK-----')
@@ -94,6 +95,96 @@ def test_pgp_key_generation(gpg_home):
     assert result['data']['keyLength'] == 2048
     assert result['data']['name'] == 'Test User'
     assert result['data']['email'] == 'test@example.com'
+    assert result['data']['comment'] == 'Test Key'
+    assert result['data']['expireDate'] is not None
+
+def test_pgp_key_generation_ecc(gpg_home):
+    """Test PGP key generation with ECC"""
+    result = generate_pgp_key(
+        name='ECC User',
+        email='ecc@example.com',
+        key_type='ECC',
+        curve='secp384r1',
+        expire_time='1y'
+    )
+    assert result['success'] is True
+    assert result['data']['privateKey'].startswith('-----BEGIN PGP PRIVATE KEY BLOCK-----')
+    assert result['data']['publicKey'].startswith('-----BEGIN PGP PUBLIC KEY BLOCK-----')
+    assert result['data']['keyType'] == 'ECC'
+    assert result['data']['curve'] == 'secp384r1'
+    assert result['data']['name'] == 'ECC User'
+    assert result['data']['email'] == 'ecc@example.com'
+
+def test_invalid_pgp_params(gpg_home):
+    """Test comprehensive error handling for PGP key generation"""
+    # Test invalid name
+    result = generate_pgp_key(name='', email='test@example.com')
+    assert result['success'] is False
+    assert 'Name must be a non-empty string' in result['error_message']
+
+    # Test invalid email
+    result = generate_pgp_key(name='Test User', email='invalid-email')
+    assert result['success'] is False
+    assert 'Invalid email format' in result['error_message']
+
+    # Test invalid key type
+    result = generate_pgp_key(name='Test User', email='test@example.com', key_type='INVALID')
+    assert result['success'] is False
+    assert 'Invalid key type' in result['error_message']
+
+    # Test invalid RSA key length
+    result = generate_pgp_key(
+        name='Test User', 
+        email='test@example.com', 
+        key_type='RSA', 
+        key_length=1024
+    )
+    assert result['success'] is False
+    assert 'Invalid key length for RSA' in result['error_message']
+
+    # Test invalid ECC curve
+    result = generate_pgp_key(
+        name='Test User', 
+        email='test@example.com', 
+        key_type='ECC', 
+        curve='invalid-curve'
+    )
+    assert result['success'] is False
+    assert 'Invalid curve' in result['error_message']
+
+    # Test invalid expire time
+    result = generate_pgp_key(
+        name='Test User', 
+        email='test@example.com', 
+        expire_time='invalid'
+    )
+    assert result['success'] is False
+    assert 'Invalid expiration time format' in result['error_message']
+
+def test_pgp_key_generation_with_special_characters(gpg_home):
+    """Test PGP key generation with special characters in name and comment"""
+    result = generate_pgp_key(
+        name='Test User <Special>',
+        email='special@example.com',
+        comment='Test & Special Key'
+    )
+    assert result['success'] is True
+    assert result['data']['name'] == 'Test User Special'
+    assert result['data']['email'] == 'special@example.com'
+
+def test_pgp_key_generation_long_inputs(gpg_home):
+    """Test PGP key generation with long inputs"""
+    long_name = 'A' * 150  # Longer than max allowed length
+    long_email = 'a' * 50 + '@example.com'
+    
+    result = generate_pgp_key(
+        name=long_name, 
+        email=long_email,
+        comment='Long Input Test'
+    )
+    assert result['success'] is True
+    assert len(result['data']['name']) <= 100
+    assert result['data']['email'] == long_email
 
 def test_invalid_passphrase_length():
     """Test error handling for invalid passphrase length"""
@@ -110,11 +201,5 @@ def test_invalid_ssh_type():
 def test_invalid_rsa_size():
     """Test error handling for invalid RSA key size"""
     result = generate_rsa_key(key_size=1024)
-    assert result['success'] is False
-    assert 'error_message' in result
-
-def test_invalid_pgp_params(gpg_home):
-    """Test error handling for invalid PGP parameters"""
-    result = generate_pgp_key(name='', email='invalid')
     assert result['success'] is False
     assert 'error_message' in result
