@@ -9,6 +9,16 @@ from utils.utils import create_output_directory, save_key_pair
 # nosec B404 - subprocess is necessary for GPG operations
 from subprocess import run, CalledProcessError
 import shutil
+import uuid
+from typing import Optional, Tuple
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+# Email validation regex
+EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
 
 # Key type configurations
 KEY_TYPES = {
@@ -81,56 +91,139 @@ def _check_gpg_installation():
     except Exception as e:
         return False, f"Unexpected error checking GPG: {str(e)}"
 
-def generate_pgp_key(name, email, comment=None, key_type="RSA", key_length=None, curve=None, 
-                    passphrase=None, expire_time="never"):
+def _sanitize_name(name: str) -> str:
     """
-    Generate a PGP key pair.
+    Sanitize and validate name input.
+    
+    Args:
+        name (str): Input name to sanitize
+    
+    Returns:
+        str: Sanitized name
+    
+    Raises:
+        ValueError: If name is invalid
+    """
+    if not name or not isinstance(name, str):
+        raise ValueError("Name must be a non-empty string")
+    
+    # Remove any potentially dangerous characters
+    sanitized_name = re.sub(r'[<>&\'"()]', '', name).strip()
+    
+    if not sanitized_name:
+        raise ValueError("Invalid name after sanitization")
+    
+    # Limit name length
+    return sanitized_name[:100]
+
+def _sanitize_email(email: str) -> str:
+    """
+    Sanitize and validate email input.
+    
+    Args:
+        email (str): Input email to validate
+    
+    Returns:
+        str: Validated email
+    
+    Raises:
+        ValueError: If email is invalid
+    """
+    if not email or not isinstance(email, str):
+        raise ValueError("Email must be a non-empty string")
+    
+    email = email.strip()
+    
+    if not EMAIL_REGEX.match(email):
+        raise ValueError("Invalid email format")
+    
+    return email
+
+def _sanitize_comment(comment: Optional[str]) -> Optional[str]:
+    """
+    Sanitize and validate comment input.
+    
+    Args:
+        comment (str, optional): Input comment to sanitize
+    
+    Returns:
+        str or None: Sanitized comment
+    """
+    if not comment or not isinstance(comment, str):
+        return None
+    
+    # Remove potentially dangerous characters
+    sanitized_comment = re.sub(r'[<>&\'"()]', ' ', comment).strip()
+    
+    # Limit comment length
+    return sanitized_comment[:100] or None
+
+def generate_pgp_key(
+    name: str, 
+    email: str, 
+    comment: Optional[str] = None, 
+    key_type: str = "RSA", 
+    key_length: Optional[int] = None, 
+    curve: Optional[str] = None, 
+    passphrase: Optional[str] = None, 
+    expire_time: str = "never"
+):
+    """
+    Generate a PGP key pair with enhanced security and validation.
     """
     try:
-        # Validate inputs
-        if not name or not email:
-            return error_response("Name and email are required")
-            
+        # Validate and sanitize inputs
+        try:
+            name = _sanitize_name(name)
+            email = _sanitize_email(email)
+            comment = _sanitize_comment(comment)
+        except ValueError as e:
+            logger.error(f"Input validation error: {str(e)}")
+            return error_response(str(e))
+        
+        # Ensure a passphrase is provided for key export
+        if not passphrase:
+            passphrase = str(uuid.uuid4())  # Generate a random passphrase
+        
         # Get GPG path
         gpg_path = _get_gpg_path()
         if not gpg_path:
+            logger.error("GPG is not installed or not in PATH")
             return error_response("GPG is not installed or not in PATH")
             
         # Check GPG installation
         gpg_ok, error_msg = _check_gpg_installation()
         if not gpg_ok:
+            logger.error(f"GPG installation check failed: {error_msg}")
             return error_response(error_msg)
-
-        # Validate and sanitize comment
-        if comment:
-            try:
-                comment = validate_comment(comment)
-            except ValueError as e:
-                return error_response(str(e))
 
         # Validate key type
         key_type = key_type.upper()
         if key_type not in ["RSA", "ECC"]:
+            logger.error(f"Invalid key type: {key_type}")
             return error_response("Invalid key type. Must be 'RSA' or 'ECC'")
 
         # Validate and set key length for RSA
         if key_type == "RSA":
             if not key_length:
                 key_length = 2048
-            if key_length not in [2048, 4096]:
-                return error_response("Invalid key length for RSA. Must be 2048 or 4096")
+            if key_length not in [2048, 3072, 4096]:
+                logger.error(f"Invalid RSA key length: {key_length}")
+                return error_response("Invalid key length for RSA. Must be 2048, 3072, or 4096")
 
         # Validate curve for ECC
         if key_type == "ECC":
             if not curve:
-                curve = "secp256r1"
-            valid_curves = ["secp256r1", "secp384r1", "secp521r1"]
+                curve = "secp256k1"
+            valid_curves = ["secp256k1", "secp384r1", "secp521r1", "brainpoolP256r1", "brainpoolP384r1", "brainpoolP512r1"]
             if curve not in valid_curves:
+                logger.error(f"Invalid ECC curve: {curve}")
                 return error_response(f"Invalid curve. Must be one of: {', '.join(valid_curves)}")
 
         try:
             expire_date = _calculate_expire_date(expire_time)
         except ValueError as e:
+            logger.error(f"Invalid expiration time: {expire_time}")
             return error_response(str(e))
 
         # Create gpg home directory if it doesn't exist
@@ -149,6 +242,7 @@ def generate_pgp_key(name, email, comment=None, key_type="RSA", key_length=None,
         try:
             gpg.list_keys()
         except Exception as e:
+            logger.error(f"GPG key listing failed: {str(e)}")
             error_msg = str(e).lower()
             if "not installed" in error_msg or "cannot run" in error_msg:
                 gpg_installed, error_message = _check_gpg_installation()
@@ -156,12 +250,13 @@ def generate_pgp_key(name, email, comment=None, key_type="RSA", key_length=None,
                     return error_response(error_message)
             return error_response(f"GPG error: {str(e)}")
 
-        # Prepare key input
+        # Prepare key input string
         name_string = name
         if comment:
             name_string = f"{name} ({comment})"
         
         # Create key input string in the format expected by GPG
+        logger.debug(f"Generating key with params: name={name_string}, email={email}, key_type={key_type}")
         key_input = gpg.gen_key_input(
             name_real=name_string,
             name_email=email,
@@ -170,30 +265,45 @@ def generate_pgp_key(name, email, comment=None, key_type="RSA", key_length=None,
             key_length=key_length if key_type == 'RSA' else 2048,
             subkey_type='RSA',
             subkey_length=key_length if key_type == 'RSA' else 2048,
-            passphrase=passphrase if passphrase else None
-        )
-
-        # Generate key
-        key = gpg.gen_key(key_input)
-        
-        if not key:
-            return error_response("Failed to generate PGP key")
-
-        # Export public key
-        ascii_armored_public_key = gpg.export_keys(str(key))
-        
-        # Export private key
-        ascii_armored_private_key = gpg.export_keys(
-            str(key), 
-            secret=True, 
             passphrase=passphrase
         )
 
+        # Generate key
+        try:
+            key = gpg.gen_key(key_input)
+        except Exception as e:
+            logger.error(f"Key generation failed: {str(e)}")
+            return error_response(f"Failed to generate PGP key: {str(e)}")
+        
+        if not key:
+            logger.error("Key generation returned empty result")
+            return error_response("Failed to generate PGP key")
+
+        # Export public key
+        try:
+            ascii_armored_public_key = gpg.export_keys(str(key))
+        except Exception as e:
+            logger.error(f"Public key export failed: {str(e)}")
+            return error_response(f"Failed to export public key: {str(e)}")
+        
+        # Export private key
+        try:
+            ascii_armored_private_key = gpg.export_keys(
+                str(key), 
+                secret=True, 
+                passphrase=passphrase
+            )
+        except Exception as e:
+            logger.error(f"Private key export failed: {str(e)}")
+            return error_response(f"Failed to export private key: {str(e)}")
+
         if not ascii_armored_public_key or not ascii_armored_private_key:
+            logger.error("Exported keys are empty")
             return error_response("Failed to export generated keys")
 
-        # Create a directory for the key using create_output_directory
-        key_dir = create_output_directory('pgp', comment or email.replace('@', '_at_'))
+        # Create a directory for the key using a modified directory name
+        safe_comment = re.sub(r'\W+', '_', comment) if comment else ''
+        key_dir = create_output_directory('pgp', safe_comment or email.replace('@', '_at_'))
 
         # Save keys using save_key_pair
         private_path, public_path = save_key_pair(
@@ -220,4 +330,5 @@ def generate_pgp_key(name, email, comment=None, key_type="RSA", key_length=None,
         return info_response(response_data)
 
     except Exception as e:
+        logger.error(f"Unexpected error generating PGP key: {str(e)}", exc_info=True)
         return error_response(f"Error generating PGP key: {str(e)}")
