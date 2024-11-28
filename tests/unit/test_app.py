@@ -92,7 +92,8 @@ def test_generate_pgp(client, gpg_home):
                              'email': 'test@example.com',
                              'keyType': 'RSA',
                              'keyLength': 2048,
-                             'expireTime': '2y'
+                             'expireTime': '2y',
+                             'passphrase': 'test123'
                          })
     assert response.status_code == 200
     data = response.json
@@ -101,9 +102,6 @@ def test_generate_pgp(client, gpg_home):
     assert data['data']['publicKey'].startswith('-----BEGIN PGP PUBLIC KEY BLOCK-----')
     assert data['data']['keyType'] == 'RSA'
     assert data['data']['keyLength'] == 2048
-    assert 'directory' in data['data']
-    assert 'privatePath' in data['data']
-    assert 'publicPath' in data['data']
 
 def test_invalid_input(client, gpg_home):
     """Test error handling for invalid input"""

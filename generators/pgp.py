@@ -30,14 +30,25 @@ def _calculate_expire_date(expire_time):
         return '0'
     
     try:
-        years = int(expire_time.lower().rstrip('y'))
-        if years <= 0:
-            return '0'
-        
-        expire_date = datetime.now() + timedelta(days=365 * years)
-        return expire_date.strftime('%Y-%m-%d')
+        # Handle days format (e.g., '1d')
+        if expire_time.lower().endswith('d'):
+            days = int(expire_time.lower().rstrip('d'))
+            if days <= 0:
+                return '0'
+            expire_date = datetime.now() + timedelta(days=days)
+            return expire_date.strftime('%Y-%m-%d')
+            
+        # Handle years format (e.g., '1y')
+        if expire_time.lower().endswith('y'):
+            years = int(expire_time.lower().rstrip('y'))
+            if years <= 0:
+                return '0'
+            expire_date = datetime.now() + timedelta(days=365 * years)
+            return expire_date.strftime('%Y-%m-%d')
+            
+        raise ValueError("Invalid expiration time format")
     except ValueError:
-        raise ValueError("Invalid expiration time format. Use 'Xy' where X is number of years, or 'never'")
+        raise ValueError("Invalid expiration time format. Use 'Xd' for days, 'Xy' for years, or 'never'")
 
 def _get_gpg_path():
     """Get the full path to the GPG executable."""

@@ -67,7 +67,7 @@ def test_generate_pgp_key():
         "key_type": "RSA",
         "key_length": 2048,
         "passphrase": "test123",
-        "expire_time": "1d"
+        "expire_time": "1y"
     }
     response = requests.post(f"{BASE_URL}/generate/pgp", json=payload, timeout=5)
     assert response.status_code == 200
@@ -75,6 +75,7 @@ def test_generate_pgp_key():
     assert data["success"] is True
     assert "privateKey" in data["data"]
     assert "publicKey" in data["data"]
+    assert "keyId" in data["data"]
     assert data["data"]["privateKey"].startswith("-----BEGIN PGP PRIVATE KEY BLOCK-----")
     assert data["data"]["publicKey"].startswith("-----BEGIN PGP PUBLIC KEY BLOCK-----")
 

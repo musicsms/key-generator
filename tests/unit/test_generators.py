@@ -84,6 +84,7 @@ def test_pgp_key_generation(gpg_home):
         email='test@example.com',
         key_type='RSA',
         key_length=2048,
+        passphrase='test123',
         expire_time='2y'
     )
     assert result['success'] is True
@@ -91,6 +92,8 @@ def test_pgp_key_generation(gpg_home):
     assert result['data']['publicKey'].startswith('-----BEGIN PGP PUBLIC KEY BLOCK-----')
     assert result['data']['keyType'] == 'RSA'
     assert result['data']['keyLength'] == 2048
+    assert result['data']['name'] == 'Test User'
+    assert result['data']['email'] == 'test@example.com'
 
 def test_invalid_passphrase_length():
     """Test error handling for invalid passphrase length"""
