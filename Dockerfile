@@ -42,10 +42,8 @@ RUN mkdir -p /app/keys/{ssh,rsa,pgp} && \
     mkdir -p /app/keys/.gnupg && \
     chmod 700 /app/keys/.gnupg
 
-# Set environment variables
+# Set only non-sensitive environment variables
 ENV PYTHONUNBUFFERED=1 \
-    KEY_STORAGE_PATH=/app/keys \
-    GNUPGHOME=/app/keys/.gnupg \
     FLASK_DEBUG=0
 
 EXPOSE 5001
@@ -54,4 +52,9 @@ EXPOSE 5001
 HEALTHCHECK --interval=30s --timeout=3s \
   CMD curl -f http://localhost:5001/health || exit 1
 
+# Use entrypoint script to set up environment
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "4", "app:app"]
