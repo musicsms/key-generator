@@ -1,0 +1,51 @@
+<!-- PGP Tab -->
+<div class="tab-pane fade" id="pgp" role="tabpanel">
+    <form id="pgpForm">
+        <div class="mb-3">
+            <label class="form-label">Name</label>
+            <input type="text" class="form-control" name="name" placeholder="e.g., John Doe" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control" name="email" placeholder="e.g., john@example.com" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Comment (Optional)</label>
+            <input type="text" class="form-control" name="comment" placeholder="e.g., work key">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Key Type</label>
+            <select class="form-select" name="keyType" id="pgpKeyType">
+                <option value="RSA">RSA</option>
+            </select>
+        </div>
+        <div class="mb-3" id="pgpRsaOptions">
+            <label class="form-label">Key Length</label>
+            <select class="form-select" name="keyLength">
+                <option value="2048">2048 bits</option>
+                <option value="4096">4096 bits</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Expiration Time</label>
+            <select class="form-select" name="expireTime">
+                <option value="never" selected>Never expire</option>
+                <option value="1y">1 year</option>
+                <option value="2y">2 years</option>
+                <option value="3y">3 years</option>
+                <option value="5y">5 years</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Passphrase (Optional but Recommended)</label>
+            <div class="input-group">
+                <input type="password" class="form-control" name="passphrase" id="pgpPassphrase">
+                <button class="btn btn-outline-secondary toggle-password" type="button" data-toggle-password="pgpPassphrase">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Generate PGP Key</button>
+    </form>
+    <div class="result-section mt-4"></div>
+</div>

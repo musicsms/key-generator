@@ -1,0 +1,35 @@
+<!-- SSH Tab -->
+<div class="tab-pane fade" id="ssh" role="tabpanel">
+    <form id="sshForm">
+        <div class="mb-3">
+            <label class="form-label">Comment</label>
+            <input type="text" class="form-control" name="comment" placeholder="e.g., github_ssh_key" maxlength="40">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Key Type</label>
+            <select class="form-select" name="keyType" id="sshKeyType">
+                <option value="rsa">RSA</option>
+                <option value="ecdsa">ECDSA</option>
+                <option value="ed25519">ED25519</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Key Size</label>
+            <select class="form-select" name="keySize" id="sshKeySize">
+                <option value="2048">2048 bits</option>
+                <option value="4096">4096 bits</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Passphrase (Optional)</label>
+            <div class="input-group">
+                <input type="password" class="form-control" name="passphrase" id="sshPassphrase">
+                <button class="btn btn-outline-secondary toggle-password" type="button" data-toggle-password="sshPassphrase">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Generate SSH Key</button>
+    </form>
+    <div class="result-section mt-4"></div>
+</div>
