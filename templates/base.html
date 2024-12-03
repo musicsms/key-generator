@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-100">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Key Generator</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <link rel="stylesheet" href="/static/vendor/bootstrap/bootstrap.min.css">
@@ -10,60 +10,62 @@
     <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
     {% block extra_head %}{% endblock %}
 </head>
-<body>
-    <div class="container mt-5">
-        <div class="row">
-            <div class="col-md-8 offset-md-2">
-                {% block content %}{% endblock %}
+<body class="d-flex flex-column h-100">
+    <main class="flex-shrink-0">
+        <div class="container">
+            <div class="row">
+                <div class="col-12 col-md-8 offset-md-2">
+                    {% block content %}{% endblock %}
 
-                <!-- Results Section -->
-                <div id="resultSection" class="mt-4" style="display: none;">
-                    <!-- Passphrase Result -->
-                    <div id="passphraseResult" class="result-container" style="display: none;">
-                        <h4>Generated Passphrase</h4>
-                        <div class="mb-3">
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="passphraseOutput" readonly>
-                                <button class="btn btn-outline-secondary" onclick="copyToClipboard('passphraseOutput')">
-                                    <i class="bi bi-clipboard"></i>
-                                </button>
+                    <!-- Results Section -->
+                    <div id="resultSection" class="mt-4" style="display: none;">
+                        <!-- Passphrase Result -->
+                        <div id="passphraseResult" class="result-container" style="display: none;">
+                            <h4>Generated Passphrase</h4>
+                            <div class="mb-3">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="passphraseOutput" readonly>
+                                    <button class="btn btn-outline-secondary d-flex align-items-center justify-content-center" onclick="copyToClipboard('passphraseOutput')" aria-label="Copy to clipboard">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
+
+                        <!-- Key Pair Result -->
+                        <div id="keyPairResult" class="result-container" style="display: none;">
+                            <h4>Generated Keys</h4>
+                            <div class="mb-3">
+                                <label class="form-label">Public Key:</label>
+                                <div class="input-group">
+                                    <textarea class="form-control font-monospace" id="publicKey" rows="5" readonly></textarea>
+                                    <button class="btn btn-outline-secondary d-flex align-items-center justify-content-center" onclick="copyToClipboard('publicKey')" aria-label="Copy public key">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Private Key:</label>
+                                <div class="input-group">
+                                    <textarea class="form-control font-monospace" id="privateKey" rows="5" readonly></textarea>
+                                    <button class="btn btn-outline-secondary d-flex align-items-center justify-content-center" onclick="copyToClipboard('privateKey')" aria-label="Copy private key">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Custom Result -->
+                        <div id="customResult" class="result-container"></div>
                     </div>
-
-                    <!-- Key Pair Result -->
-                    <div id="keyPairResult" class="result-container" style="display: none;">
-                        <h4>Generated Keys</h4>
-                        <div class="mb-3">
-                            <label class="form-label">Public Key:</label>
-                            <div class="input-group">
-                                <textarea class="form-control font-monospace" id="publicKey" rows="5" readonly></textarea>
-                                <button class="btn btn-outline-secondary" onclick="copyToClipboard('publicKey')">
-                                    <i class="bi bi-clipboard"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Private Key:</label>
-                            <div class="input-group">
-                                <textarea class="form-control font-monospace" id="privateKey" rows="5" readonly></textarea>
-                                <button class="btn btn-outline-secondary" onclick="copyToClipboard('privateKey')">
-                                    <i class="bi bi-clipboard"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Custom Result -->
-                    <div id="customResult" class="result-container"></div>
                 </div>
             </div>
         </div>
-    </div>
+    </main>
 
-    <footer class="footer mt-5 py-3 bg-light">
+    <footer class="footer mt-auto py-2">
         <div class="container text-center">
-            <span class="text-muted">&copy; 2024 musicsms. All rights reserved.</span>
+            <small class="text-muted">&copy; 2024 musicsms. All rights reserved.</small>
         </div>
     </footer>
 
