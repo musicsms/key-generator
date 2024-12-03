@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Key Generator</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="stylesheet" href="/static/vendor/bootstrap/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/vendor/bootstrap-icons/bootstrap-icons.min.css">
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                {% block content %}{% endblock %}
+
+                <!-- Results Section -->
+                <div id="resultSection" class="mt-4" style="display: none;">
+                    <!-- Passphrase Result -->
+                    <div id="passphraseResult" class="result-container" style="display: none;">
+                        <h4>Generated Passphrase</h4>
+                        <div class="mb-3">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="passphraseOutput" readonly>
+                                <button class="btn btn-outline-secondary" onclick="copyToClipboard('passphraseOutput')">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Key Pair Result -->
+                    <div id="keyPairResult" class="result-container" style="display: none;">
+                        <h4>Generated Keys</h4>
+                        <div class="mb-3">
+                            <label class="form-label">Public Key:</label>
+                            <div class="input-group">
+                                <textarea class="form-control font-monospace" id="publicKey" rows="5" readonly></textarea>
+                                <button class="btn btn-outline-secondary" onclick="copyToClipboard('publicKey')">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Private Key:</label>
+                            <div class="input-group">
+                                <textarea class="form-control font-monospace" id="privateKey" rows="5" readonly></textarea>
+                                <button class="btn btn-outline-secondary" onclick="copyToClipboard('privateKey')">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Custom Result -->
+                    <div id="customResult" class="result-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer mt-5 py-3 bg-light">
+        <div class="container text-center">
+            <span class="text-muted">&copy; 2024 musicsms. All rights reserved.</span>
+        </div>
+    </footer>
+
+    <script src="/static/vendor/bootstrap/bootstrap.bundle.min.js" defer></script>
+    <script type="module" src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
+
+    <script type="module">
+        import { previewCommentSanitization } from '/static/js/validation.js';
+        
+        // Add live comment preview for all comment inputs
+        document.querySelectorAll('input[name="comment"]').forEach(input => {
+            const previewSpan = document.createElement('small');
+            previewSpan.className = 'text-muted d-block mt-1';
+            input.parentNode.appendChild(previewSpan);
+            
+            input.addEventListener('input', () => {
+                const sanitized = previewCommentSanitization(input.value);
+                if (sanitized) {
+                    previewSpan.textContent = sanitized;
+                    previewSpan.className = 'text-muted d-block mt-1';
+                } else {
+                    previewSpan.textContent = 'Invalid comment format';
+                    previewSpan.className = 'text-danger d-block mt-1';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

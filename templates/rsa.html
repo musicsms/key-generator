@@ -1,0 +1,27 @@
+<!-- RSA Tab -->
+<div class="tab-pane fade" id="rsa" role="tabpanel">
+    <form id="rsaForm">
+        <div class="mb-3">
+            <label class="form-label">Comment</label>
+            <input type="text" class="form-control" name="comment" placeholder="e.g., work_rsa_key" maxlength="40">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Key Size</label>
+            <select class="form-select" name="keySize">
+                <option value="2048">2048 bits</option>
+                <option value="4096">4096 bits</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Passphrase (Optional)</label>
+            <div class="input-group">
+                <input type="password" class="form-control" name="passphrase" id="rsaPassphrase">
+                <button class="btn btn-outline-secondary toggle-password" type="button" data-toggle-password="rsaPassphrase">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Generate RSA Key</button>
+    </form>
+    <div class="result-section mt-4"></div>
+</div>
