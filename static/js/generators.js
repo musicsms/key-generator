@@ -1,6 +1,6 @@
 // Generation handlers for different key types
 import { showLoading, hideLoading, displayMessage, copyToClipboard, clearOutputs } from './utils.js';
-import { validateComment } from './validation.js';
+import { sanitizeComment } from './validation.js';
 
 // Helper function to get the output section for the current tab
 function getResultSection() {
@@ -73,8 +73,8 @@ export function handleSSHKeyGeneration(e) {
         const form = e.target;
         const formData = new FormData(form);
         
-        // Validate and sanitize inputs
-        const comment = validateComment(formData.get('comment'));
+        // Sanitize inputs
+        const comment = sanitizeComment(formData.get('comment'));
         const keyType = formData.get('keyType');
         const keySize = parseInt(formData.get('keySize'));
         const passphrase = formData.get('passphrase');
@@ -122,8 +122,8 @@ export function handleRSAKeyGeneration(e) {
         const form = e.target;
         const formData = new FormData(form);
         
-        // Validate and sanitize inputs
-        const comment = validateComment(formData.get('comment'));
+        // Sanitize inputs
+        const comment = sanitizeComment(formData.get('comment'));
         const keySize = parseInt(formData.get('keySize'));
         const passphrase = formData.get('passphrase');
 
@@ -169,8 +169,8 @@ export async function handlePGPKeyGeneration(e) {
         const form = e.target;
         const formData = new FormData(form);
         
-        // Validate and sanitize inputs
-        const comment = validateComment(formData.get('comment'));
+        // Sanitize inputs
+        const comment = sanitizeComment(formData.get('comment'));
         const keyType = formData.get('keyType');
         const keyLength = parseInt(formData.get('keyLength'));
         const name = formData.get('name').trim();
@@ -228,7 +228,6 @@ export async function handlePGPKeyGeneration(e) {
                     <li>Key Length: ${result.data.keyLength} bits</li>
                     <li>Key ID: ${result.data.keyId}</li>
                     <li>Expiration: ${result.data.expireDate}</li>
-                    <li>Files saved in: ${result.data.directory}</li>
                 </ul>
             `;
             resultSection.appendChild(infoDiv);
