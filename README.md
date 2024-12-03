@@ -1,6 +1,8 @@
 # Key Generator
 
-[![CI/CD Pipeline](https://github.com/musicsms/key-generator/actions/workflows/ci-cd.yml/badge.svg?branch=dev)](https://github.com/musicsms/key-generator/actions/workflows/ci-cd.yml)
+[![Test Workflow](https://github.com/musicsms/key-generator/actions/workflows/test.yml/badge.svg?branch=dev)](https://github.com/musicsms/key-generator/actions/workflows/test.yml)
+[![Security Checks](https://github.com/musicsms/key-generator/actions/workflows/security.yml/badge.svg?branch=dev)](https://github.com/musicsms/key-generator/actions/workflows/security.yml)
+[![Docker Build](https://github.com/musicsms/key-generator/actions/workflows/docker.yml/badge.svg?branch=dev)](https://github.com/musicsms/key-generator/actions/workflows/docker.yml)
 [![codecov](https://codecov.io/gh/musicsms/key-generator/branch/dev/graph/badge.svg)](https://codecov.io/gh/musicsms/key-generator)
 [![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)](https://github.com/musicsms/key-generator/pkgs/container/key-generator)
 
